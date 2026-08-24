@@ -1,0 +1,15 @@
+{
+  "name": "sdp-tool",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "client",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w client",
+    "build": "npm run build -w client",
+    "lint:copy": "npm run lint:copy -w client"
+  }
+}

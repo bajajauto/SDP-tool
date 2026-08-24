@@ -1,0 +1,80 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  margin: 0;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Minimum 44px touch targets, FR-RS-004 */
+button,
+input,
+select,
+textarea,
+a.button {
+  min-height: 44px;
+}
+
+/* Visible focus state everywhere, FR-A11Y-001 */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+}
+
+.placeholder-card {
+  margin: var(--space-6) auto;
+  max-width: 32rem;
+  padding: var(--space-6);
+  text-align: center;
+  background: #fff;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+}
+
+.login-logo{width:190px;height:70px;overflow:hidden;background:#fff;border:0;border-radius:8px}
+.login-logo img,.login-mobile-brand img{width:155%;max-width:none;transform:translateY(-18%);display:block}
+.login-mobile-brand{width:165px;height:62px;overflow:hidden;background:#fff;border-radius:7px}
+.login-card-heading p strong{color:var(--color-text-secondary);font-weight:700}
+
+/* Login */
+.login-page{min-height:100vh;display:grid;grid-template-columns:minmax(380px,1.05fr) minmax(520px,.95fr);background:#fff}.login-story{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:44px 56px;color:#fff;background:linear-gradient(145deg,#092f68,#0e4b98 55%,#1769bd)}.login-story:before,.login-story:after{content:'';position:absolute;border:1px solid rgba(255,255,255,.1);border-radius:50%}.login-story:before{width:680px;height:680px;right:-390px;top:-230px}.login-story:after{width:420px;height:420px;left:-260px;bottom:-170px}.login-brand{z-index:1;display:flex;align-items:center;gap:14px}.login-logo{width:48px;height:48px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.6);border-radius:10px;font-size:11px;font-weight:800}.login-brand strong,.login-brand span{display:block}.login-brand strong{font-size:15px}.login-brand span{color:rgba(255,255,255,.62);font-size:11px}.login-story-copy{z-index:1;max-width:580px;margin:70px 0}.login-eyebrow{display:inline-block;margin-bottom:18px;color:#b9d5fa;font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase}.login-story h1{font-size:clamp(40px,4.2vw,64px);line-height:1.03;letter-spacing:-.025em}.login-story-copy>p{max-width:500px;margin:24px 0 38px;color:rgba(255,255,255,.76);font-size:16px;line-height:1.75}.login-steps{display:flex;align-items:center;max-width:430px;gap:14px;color:rgba(255,255,255,.78);font-size:12px;text-transform:uppercase;letter-spacing:.08em}.login-steps span{white-space:nowrap}.login-steps b{color:#8fc0fa;margin-right:5px}.login-steps i{height:1px;flex:1;background:rgba(255,255,255,.25)}.login-quote{z-index:1;margin:0;color:rgba(255,255,255,.56);font-family:var(--font-serif);font-style:italic}.login-panel{display:grid;place-items:center;padding:32px 7vw;background:#f8fafc}.login-card{width:min(100%,470px)}.login-card-heading{margin-bottom:26px}.login-card-heading h2{font-size:36px}.login-card-heading p{margin:9px 0 0;color:var(--color-text-muted);font-size:14px}.login-mobile-brand{display:none;color:var(--color-primary);font-size:11px;font-weight:800;letter-spacing:.1em;margin-bottom:24px}.login-label{display:block;font-size:12px;font-weight:700;margin:0 0 8px}.login-password-label{display:flex;justify-content:space-between;margin-top:17px}.login-password-label button{min-height:auto;border:0;background:none;color:var(--color-primary);padding:0 0 8px;font-size:11px}.login-field{height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#fff;border:1px solid var(--color-border);border-radius:9px;color:var(--color-text-placeholder)}.login-field:focus-within{border-color:var(--color-primary);box-shadow:0 0 0 3px rgba(30,95,186,.1)}.login-field input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;font-size:13px}.password-toggle{min-height:30px;border:0;background:none;color:var(--color-primary);font-size:11px;font-weight:700;cursor:pointer}.login-error{margin-top:12px;padding:9px 11px;color:var(--color-alert-fg);background:var(--color-alert-bg);border-radius:7px;font-size:12px}.login-submit{width:100%;height:50px;margin-top:21px;border:0;border-radius:9px;background:var(--color-primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer}.login-submit:hover:not(:disabled){background:var(--color-navy)}.login-submit:disabled{opacity:.5;cursor:not-allowed}.demo-divider{display:flex;align-items:center;gap:12px;margin:24px 0 9px;color:var(--color-text-placeholder);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}.demo-divider:before,.demo-divider:after{content:'';height:1px;flex:1;background:var(--color-border)}.demo-help{text-align:center;margin:0 0 11px;color:var(--color-text-muted);font-size:12px}.demo-profiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}.demo-profile{min-height:60px;display:grid;grid-template-columns:34px 1fr 16px;align-items:center;gap:10px;padding:8px 10px;text-align:left;border:1px solid var(--color-border);border-radius:9px;background:#fff;cursor:pointer}.demo-profile:hover{border-color:var(--color-blue-medium)}.demo-profile.selected{border-color:var(--color-primary);background:var(--color-blue-lightest)}.demo-avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:var(--color-blue-lightest);color:var(--color-primary);font-size:10px;font-weight:800}.selected .demo-avatar{background:var(--color-primary);color:#fff}.demo-profile strong,.demo-profile small{display:block}.demo-profile strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.demo-profile small{color:var(--color-text-muted);font-size:10px}.demo-check{color:var(--color-primary);font-weight:700}.login-security{text-align:center;margin:20px 0 0;color:var(--color-text-placeholder);font-size:10px}@media(max-width:900px){.login-page{grid-template-columns:1fr}.login-story{display:none}.login-panel{min-height:100vh;padding:30px 22px}.login-mobile-brand{display:block}}@media(max-width:480px){.demo-profiles{grid-template-columns:1fr}}
