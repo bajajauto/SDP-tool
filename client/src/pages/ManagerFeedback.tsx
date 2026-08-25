@@ -12,7 +12,6 @@ const waitingNotes = [
 export function ManagerFeedback() {
   const { state } = useSdp();
   const navigate = useNavigate();
-  const [noteIndex, setNoteIndex] = useState(0);
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
   if (state.status === 'NOT_STARTED' || state.status === 'DRAFT') {
@@ -39,9 +38,8 @@ export function ManagerFeedback() {
 
         <div style={{ padding: '18px 26px' }}>
           <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue)', marginBottom: 8 }}>A thought while you wait</div>
-          <p style={{ fontFamily: 'var(--serif)', fontSize: 16, color: 'var(--ink)', lineHeight: 1.55, marginBottom: 12 }}>&ldquo;{waitingNotes[noteIndex]}&rdquo;</p>
+          <p style={{ fontFamily: 'var(--serif)', fontSize: 16, color: 'var(--ink)', lineHeight: 1.55, marginBottom: 12 }}>&ldquo;{waitingNotes[0]}&rdquo;</p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button className="btn btn-secondary" onClick={() => setNoteIndex((current) => (current + 1) % waitingNotes.length)}>Another thought &#8635;</button>
             <button className="btn btn-primary" onClick={() => setCheckedAt(new Date())}>Check feedback status</button>
           </div>
           {checkedAt && <div role="status" style={{ marginTop: 10, padding: '9px 12px', borderRadius: 'var(--r-sm)', background: 'var(--blue-xl)', color: 'var(--blue)', fontSize: 12.5 }}>Still being thoughtfully reviewed. Last checked at {checkedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.</div>}
