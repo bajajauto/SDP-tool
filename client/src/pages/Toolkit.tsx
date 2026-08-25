@@ -11,7 +11,6 @@ export function Toolkit() {
 
   return (
     <div className="screen-inner">
-      <div className="pillar-tag" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>Support Toolkit</div>
       <h1 className="page-title">Support Toolkit</h1>
       <p className="page-sub" style={{ marginBottom: 32 }}>
         Resources to help you reflect more effectively and have better development conversations.

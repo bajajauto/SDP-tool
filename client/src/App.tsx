@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Route, Routes, useNavigate } from 'react-router-dom';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import type { Me } from '@sdp/shared';
 import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
@@ -21,6 +21,7 @@ import { Team } from './pages/Team';
 import { ReporteeDetail } from './pages/ReporteeDetail';
 import { HrDashboard } from './pages/HrDashboard';
 import { TdAdminDashboard } from './pages/TdAdminDashboard';
+import { HomeDashboard } from './pages/HomeDashboard';
 import { RouteStub } from './pages/RouteStub';
 import { SdpProvider } from './state/SdpContext';
 import { api } from './lib/api';
@@ -42,10 +43,16 @@ export default function App() {
   const [accessDenied, setAccessDenied] = useState(false);
   const [view, setView] = useState<ViewRole | null>(loadSavedView);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     api.me().then(setMe).catch(() => setAccessDenied(true));
   }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.querySelector('.app-main')?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname]);
 
   if (accessDenied) {
     return <AccessPending />;
@@ -64,6 +71,10 @@ export default function App() {
     navigate('/');
   }
 
+  function handleBack() {
+    navigate('/home');
+  }
+
   if (!view) {
     return <Login onSelect={handleSelectView} />;
   }
@@ -80,7 +91,9 @@ export default function App() {
           <div style={{ display: 'flex', flex: 1 }}>
             <Sidebar roles={me?.roles ?? []} onSignOut={handleSignOut} />
             <main className="app-main" style={{ flex: 1, minWidth: 0 }}>
+              {location.pathname !== '/home' && location.pathname !== '/' && <div className="section-back-wrap"><button type="button" className="section-back" onClick={handleBack}>&larr; Back</button></div>}
               <Routes>
+                <Route path="/home" element={<HomeDashboard />} />
                 <Route path="/" element={<Landing />} />
                 <Route path="/reflect" element={<Reflect />} />
                 <Route path="/vision" element={<Vision />} />

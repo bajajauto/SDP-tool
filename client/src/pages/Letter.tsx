@@ -23,7 +23,6 @@ export function Letter() {
 
   return (
     <div className="screen-inner">
-      <div className="pillar-tag" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>My Letter</div>
       <h1 className="page-title">A letter to myself</h1>
       <p className="page-sub" style={{ marginBottom: 24 }}>
         Composed from your own reflection and goals. This is the artefact you carry forward into next year.

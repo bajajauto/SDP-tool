@@ -73,7 +73,6 @@ export function Journal() {
 
   return (
     <div className="screen-inner wide journal-screen">
-      <div className="pillar-tag" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>My Journal</div>
       <h1 className="page-title">My Journal</h1>
       <p className="page-sub journal-intro">Private notes, never shared with your manager, HR, or anyone else.</p>
 

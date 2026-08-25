@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, type ReporteeDetail as ReporteeDetailDto } from '../lib/api';
+import { SubmissionNotice } from '../components/SubmissionNotice';
 
 /**
  * FR-MGR-010/011/012: renders exactly what the server sends. If scope is
@@ -13,6 +14,9 @@ export function ReporteeDetail() {
   const { employeeId } = useParams<{ employeeId: string }>();
   const [detail, setDetail] = useState<ReporteeDetailDto | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [feedbackShared, setFeedbackShared] = useState(false);
+  const [submittedNotice, setSubmittedNotice] = useState(false);
 
   useEffect(() => {
     if (!employeeId) return;
@@ -92,17 +96,18 @@ export function ReporteeDetail() {
         ))}
       </div>
 
-      <div className="rep-section">
+      <div className="rep-section manager-feedback-card">
         <div className="rep-section-label">Your feedback on this plan</div>
         <p style={{ fontSize: 13, color: 'var(--mid)', lineHeight: 1.65, marginBottom: 14 }}>
           Share what you see clearly, what you would push them on, and how you plan to support.
         </p>
-        <textarea className="rep-feedback-ta" placeholder="What is strong in this plan. What you would push them on. How you plan to support." />
+        <textarea className="rep-feedback-ta" value={feedback} disabled={feedbackShared} onChange={(event) => setFeedback(event.target.value)} placeholder="What is strong in this plan. What you would push them on. How you plan to support." />
         <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 12.5, color: 'var(--pale)', fontStyle: 'italic' }}>Not yet shared with {detail.employeeName.split(' ')[0]}</div>
-          <button className="btn btn-primary">Share with {detail.employeeName.split(' ')[0]}</button>
+          <div style={{ fontSize: 12.5, color: feedbackShared ? 'var(--green)' : 'var(--pale)', fontStyle: 'italic' }}>{feedbackShared ? `Shared with ${detail.employeeName.split(' ')[0]}` : `Not yet shared with ${detail.employeeName.split(' ')[0]}`}</div>
+          <button className="btn manager-feedback-share" disabled={!feedback.trim() || feedbackShared} onClick={() => { setFeedbackShared(true); setSubmittedNotice(true); }}>Share with {detail.employeeName.split(' ')[0]}</button>
         </div>
       </div>
+      <SubmissionNotice open={submittedNotice} title="Manager feedback shared" message={`Your feedback has been shared with ${detail.employeeName.split(' ')[0]}.`} onClose={() => setSubmittedNotice(false)} />
     </div>
   );
 }

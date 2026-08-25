@@ -20,7 +20,6 @@ export function ManagerFeedback() {
 
   return (
     <div className="screen-inner" style={{ paddingTop: 22, paddingBottom: 28 }}>
-      <div className="pillar-tag" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>Manager Feedback</div>
       <h1 className="page-title">Your plan is in thoughtful hands</h1>
       <p className="page-sub" style={{ marginBottom: 16 }}>
         Your manager is reviewing your SDP as a coach, not as an evaluator. Feedback will appear here when it is ready.
@@ -46,8 +45,7 @@ export function ManagerFeedback() {
         </div>
       </div>
 
-      <div className="nav-row" style={{ marginTop: 16 }}>
-        <button className="btn btn-ghost" onClick={() => navigate('/submit')}>&larr; Back to submission</button>
+      <div className="nav-row" style={{ marginTop: 16, justifyContent: 'flex-end' }}>
         <button className="btn btn-secondary" onClick={() => navigate('/goals')}>View my plan</button>
       </div>
     </div>

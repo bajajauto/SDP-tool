@@ -89,7 +89,6 @@ export function Goals() {
 
   return (
     <div className="screen-inner wide">
-      <div className="pillar-tag" style={{ background: 'var(--blue)', color: '#fff', marginBottom: 10 }}>Capability</div>
       <h1 className="page-title">My Development Goals</h1>
       <div className="goals-title-row">
         <p className="page-sub">Set 2-3 goals that genuinely connect to your reflection.</p>
@@ -200,7 +199,6 @@ export function Goals() {
       </div>
 
       <div className="nav-row">
-        <button className="btn btn-ghost" onClick={() => navigate('/vision')}>&larr; Back to Reflection</button>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <SaveIndicator lastSavedAt={lastSavedAt} />
           {!submitted && <button className="btn btn-primary" onClick={handleSubmitClick}>Submit plan &rarr;</button>}

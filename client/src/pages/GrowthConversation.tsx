@@ -14,7 +14,6 @@ export function GrowthConversation() {
   if (state.status === 'NOT_STARTED' || state.status === 'DRAFT') return <Navigate to="/submit" replace />;
 
   return <div className="screen-inner growth-conversation-page">
-    <div className="pillar-tag" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>Your next step</div>
     <h1 className="page-title">Prepare for a growth conversation with your manager</h1>
     <p className="page-sub">Before your manager can leave feedback, have a real conversation with them about your plan. Use the checklist below to prepare.</p>
 

@@ -193,7 +193,6 @@ export function Reflect() {
       })}
 
       <div className="nav-row">
-        <button className="btn btn-ghost" onClick={() => navigate('/')}>&larr; Back</button>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <SaveIndicator lastSavedAt={lastSavedAt} />
           <button className="btn btn-primary" onClick={handleSectionContinue}>Continue &rarr;</button>

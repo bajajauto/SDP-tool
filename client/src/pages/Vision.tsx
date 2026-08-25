@@ -21,6 +21,7 @@ export function Vision() {
   const [error, setError] = useState(false);
   const [pauseOpen, setPauseOpen] = useState(false);
   const submitted = state.status !== 'NOT_STARTED' && state.status !== 'DRAFT';
+  const visionComplete = state.reflection.q6Text.trim().length >= MIN_LEN;
 
   function handleContinue() {
     if (state.reflection.q6Text.trim().length < MIN_LEN) {
@@ -38,7 +39,6 @@ export function Vision() {
   return (
     <div className="screen-inner">
       <div style={{ marginBottom: 20 }}>
-        <div className="pillar-tag" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>Who I want to become</div>
         <h1 className="page-title">Your future vision</h1>
       </div>
 
@@ -51,9 +51,9 @@ export function Vision() {
               <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>{c.name}</div>
             </div>
           ))}
-          <div style={{ flex: 1, background: '#fff', border: '2px solid var(--blue-d)', borderRadius: 'var(--r-sm)', padding: '14px 12px', textAlign: 'center', boxShadow: '0 2px 10px rgba(31,41,55,.1)' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--blue-d)', textTransform: 'uppercase', marginBottom: 4 }}>Chapter 4 &middot; Now</div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>Who I want to become</div>
+          <div style={{ flex: 1, background: visionComplete ? 'var(--blue-xl)' : '#fff', border: visionComplete ? '1px solid var(--blue-l)' : '2px solid var(--blue-d)', borderRadius: 'var(--r-sm)', padding: '14px 12px', textAlign: 'center', boxShadow: visionComplete ? 'none' : '0 2px 10px rgba(31,41,55,.1)' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--blue)', textTransform: 'uppercase', marginBottom: 4 }}>Chapter 4 {visionComplete ? <>&#10003;</> : <>&middot; Now</>}</div>
+            <div style={{ fontSize: 13.5, fontWeight: visionComplete ? 600 : 700, color: 'var(--ink)' }}>Who I want to become</div>
           </div>
         </div>
       </div>
@@ -94,10 +94,9 @@ export function Vision() {
       </div>
 
       <div className="nav-row">
-        <button className="btn btn-ghost" onClick={() => navigate('/reflect')}>&larr; Back to Reflection</button>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <SaveIndicator lastSavedAt={lastSavedAt} />
-          <button className="btn btn-primary" onClick={handleContinue}>Continue to Goal Setting &rarr;</button>
+          <button className="btn btn-primary" onClick={handleContinue}>{visionComplete ? 'Next' : 'Continue to Goal Setting'} &rarr;</button>
         </div>
       </div>
 

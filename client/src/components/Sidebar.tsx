@@ -14,8 +14,8 @@ const steps: NavItemDef[] = [
   { to: '/goals', label: 'Set Goals', dot: '2' },
   { to: '/submit', label: 'Review and Submit', dot: '3' },
   { to: '/growth-conversation', label: 'Growth Conversation', dot: '4' },
-  { to: '/manager-feedback', label: 'Manager Feedback', dot: '✉' },
-  { to: '/dashboard', label: 'Track Progress', dot: '5' },
+  { to: '/manager-feedback', label: 'Manager Feedback', dot: '5' },
+  { to: '/dashboard', label: 'Track Progress', dot: '↗' },
 ];
 
 export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => void }) {
@@ -35,10 +35,6 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
   const submitted = state.status !== 'NOT_STARTED' && state.status !== 'DRAFT';
   const conversationDone = !!state.conversationConfirmedAt;
 
-  const percent = Math.round(
-    (reflectionCount / 6) * 40 + (goalsComplete ? 30 : 0) + (submitted ? 15 : 0) + (conversationDone ? 15 : 0),
-  );
-
   function stateFor(item: NavItemDef): 'active' | 'done' | 'locked' | '' {
     if (item.label === 'Reflect') return reflectionCount >= 6 ? 'done' : '';
     if (item.label === 'Set Goals') {
@@ -57,11 +53,16 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
 
   return (
     <nav className="sidebar visible">
-      <div className="sidebar-label">My SDP</div>
+      <div className="sidebar-label">Workspace</div>
+      <NavLink to="/home" className={({ isActive }) => `snav-item snav-dashboard${isActive ? ' active' : ''}`}>
+        <div className="snav-dot">&#9638;</div>
+        Dashboard
+      </NavLink>
       <NavLink to="/" className="snav-item" style={{ color: 'var(--muted)' }}>
         <div className="snav-dot" style={{ background: 'var(--cream-d)', color: 'var(--muted)' }}>&#8505;</div>
         Philosophy &amp; Overview
       </NavLink>
+      <div className="sidebar-label sidebar-section-label">My Journey</div>
       {steps.map((item) => {
         const s = stateFor(item);
         const locked = s === 'locked';
@@ -77,8 +78,9 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
           </NavLink>
         );
       })}
+      <div className="sidebar-label sidebar-section-label">People &amp; Support</div>
       {roles.includes('MANAGER') && (
-        <NavLink to="/team" className="snav-item" style={{ color: 'var(--muted)', marginTop: 8 }}>
+        <NavLink to="/team" className="snav-item" style={{ color: 'var(--muted)' }}>
           <div className="snav-dot" style={{ background: 'var(--cream-d)', color: 'var(--muted)' }}>&#128101;</div>
           My Team
         </NavLink>
@@ -87,10 +89,6 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
         <div className="snav-dot" style={{ background: 'var(--cream-d)', color: 'var(--muted)' }}>&#128218;</div>
         Support Toolkit
       </NavLink>
-      <div className="snav-progress">
-        <div className="snav-prog-label">{percent}% complete</div>
-        <div className="snav-prog-bar"><div className="snav-prog-fill" style={{ width: `${percent}%` }} /></div>
-      </div>
       <button type="button" className="sidebar-signout" onClick={onSignOut}>
         <span aria-hidden="true">&#8592;</span>
         Sign out

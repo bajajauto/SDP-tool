@@ -12,7 +12,6 @@ export function Team() {
 
   return (
     <div className="screen-inner wide">
-      <div className="pillar-tag" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>Manager view</div>
       <h1 className="page-title">My Team's Development Plans</h1>
       <p className="page-sub" style={{ marginBottom: 24 }}>
         Review each reportee's SDP, offer thoughtful feedback, and support the goals they have set for themselves.

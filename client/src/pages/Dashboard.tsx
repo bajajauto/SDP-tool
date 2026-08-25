@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSdp } from '../state/SdpContext';
 import type { CheckInPeriod, CheckInStatus, GoalDomain } from '@sdp/shared';
+import { SubmissionNotice } from '../components/SubmissionNotice';
 
 type Tab = 'goals' | 'Q1' | 'MID_YEAR' | 'Q2' | 'YEAR_END';
 
@@ -9,6 +10,12 @@ const periodLabels: Record<CheckInPeriod, string> = {
   MID_YEAR: 'Mid-Year Conversation',
   Q2: 'Quarterly Check-in 2',
   YEAR_END: 'Year-End Conversation',
+};
+const periodGuidance: Record<CheckInPeriod, string> = {
+  Q1: 'Capture your early progress, what you have tried, and what you want to focus on next. This update should take only a few minutes.',
+  MID_YEAR: 'Take a deeper look at your progress so far. Reflect on what is working, what is not, and what you want to adjust for the rest of the year.',
+  Q2: 'Record the progress you have made since mid-year and the actions that will help you maintain momentum.',
+  YEAR_END: 'Reflect on the full year: what you built, what changed, and what you want to carry into your next development plan.',
 };
 
 const statusOptions: CheckInStatus[] = ['NOT_STARTED', 'IN_PROGRESS', 'ON_TRACK', 'AT_RISK', 'ACHIEVED'];
@@ -22,6 +29,10 @@ export function Dashboard() {
     return state.goals.some((g) => !!state.checkIns[`${g.id}:${period}`]);
   }
 
+  function isCheckInComplete(period: CheckInPeriod): boolean {
+    return state.goals.length > 0 && state.goals.every((goal) => !!state.checkIns[`${goal.id}:${period}`]);
+  }
+
   const timeline = [
     { label: 'Publish SDP', done: state.status !== 'NOT_STARTED' && state.status !== 'DRAFT', marker: 'S' },
     { label: 'Quarterly Check-in 1', done: hasAnyCheckIn('Q1'), marker: '1' },
@@ -33,7 +44,6 @@ export function Dashboard() {
 
   return (
     <div className="screen-inner wide dashboard-screen">
-      <div className="pillar-tag" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>Progress Tracker</div>
       <h1 className="page-title">My Growth Tracker</h1>
       <p className="page-sub" style={{ marginBottom: 24 }}>Track your progress through the year. Each update takes a few minutes. Write for yourself, not for the system.</p>
 
@@ -56,16 +66,14 @@ export function Dashboard() {
 
       <div className="dash-tab-bar">
         <button className={`dash-tab${tab === 'goals' ? ' on' : ''}`} onClick={() => setTab('goals')}>Track My Goals</button>
-        {(['Q1', 'MID_YEAR', 'Q2', 'YEAR_END'] as CheckInPeriod[]).map((p) => (
-          <button key={p} className={`dash-tab${tab === p ? ' on' : ''}`} onClick={() => setTab(p)}>{periodLabels[p]}</button>
-        ))}
+        {(['Q1', 'MID_YEAR', 'Q2', 'YEAR_END'] as CheckInPeriod[]).map((p) => {
+          const complete = isCheckInComplete(p);
+          return <button key={p} className={`dash-tab${tab === p ? ' on' : ''}${complete ? ' completed' : ''}`} onClick={() => setTab(p)}>{complete && <span className="dash-tab-check" aria-hidden="true">&#10003;</span>}{periodLabels[p]}</button>;
+        })}
       </div>
 
       {tab === 'goals' && (
         <div>
-          <p style={{ fontSize: 13.5, color: 'var(--mid)', lineHeight: 1.65, marginBottom: 16 }}>
-            Your check-in status across the year. Each cell ticks automatically when you complete a check-in for that goal.
-          </p>
           {state.goals.length > 0 && <div className="tracker-goal-count">Tracking all {state.goals.length} development goal{state.goals.length === 1 ? '' : 's'}</div>}
           <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', boxShadow: 'var(--sh)' }}>
             <table className="track-grid">
@@ -118,16 +126,16 @@ export function Dashboard() {
             onDateChange={(d) => setCheckInDate(p, d)}
             onSubmit={submitCheckIn}
             existing={state.checkIns}
+            onComplete={() => setTab('goals')}
           />
         ) : null,
       )}
-      <div className="tracker-help">Track your progress quarterly, with deeper conversations at mid-year and year-end. Each update takes a few minutes.</div>
     </div>
   );
 }
 
 function CheckInPanel({
-  period, goals, date, onDateChange, onSubmit, existing,
+  period, goals, date, onDateChange, onSubmit, existing, onComplete,
 }: {
   period: CheckInPeriod;
   goals: { id: string; title: string; domain: string }[];
@@ -135,8 +143,11 @@ function CheckInPanel({
   onDateChange: (d: string) => void;
   onSubmit: (period: CheckInPeriod, goalId: string, note: string, status: CheckInStatus) => void;
   existing: Record<string, { progressNote: string; status: CheckInStatus; submittedAt: string | null }>;
+  onComplete: () => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, { note: string; status: CheckInStatus }>>({});
+  const [submittedNotice, setSubmittedNotice] = useState(false);
+  const [viewSubmission, setViewSubmission] = useState(false);
 
   if (goals.length === 0) {
     return <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 32, textAlign: 'center', color: 'var(--muted)', fontStyle: 'italic' }}>Set development goals first to use this check-in.</div>;
@@ -147,19 +158,33 @@ function CheckInPanel({
   }
 
   function handleSubmitAll() {
+    let submittedCount = 0;
     for (const g of goals) {
+      if (existing[`${g.id}:${period}`]) continue;
       const d = draftFor(g.id);
-      if (d.note.trim().length > 0) onSubmit(period, g.id, d.note, d.status);
+      if (d.note.trim().length > 0) {
+        onSubmit(period, g.id, d.note, d.status);
+        submittedCount += 1;
+      }
     }
+    if (submittedCount > 0) setSubmittedNotice(true);
   }
+
+  const allSubmitted = goals.every((goal) => !!existing[`${goal.id}:${period}`]);
 
   return (
     <div>
-      <div className="checkin-date-bar">
-        <label>Date of this update:</label>
-        <input type="date" value={date} onChange={(e) => onDateChange(e.target.value)} />
-      </div>
-      {goals.map((g, goalIndex) => {
+      <div className="tracker-help checkin-guidance"><strong>{periodLabels[period]}</strong>{periodGuidance[period]}</div>
+      {allSubmitted && <>
+        <div className="checkin-submitted-banner"><span aria-hidden="true">&#10003;</span><div><strong>{periodLabels[period]} submitted</strong><p>This check-in is complete and no longer editable.</p></div></div>
+        <div className="view-submission-action"><button type="button" className="btn btn-secondary" onClick={() => setViewSubmission((visible) => !visible)}>{viewSubmission ? 'Hide submission' : 'View submission'}</button></div>
+      </>}
+      {(!allSubmitted || viewSubmission) && <div className="checkin-submission-details">
+        <div className="checkin-date-bar">
+          <label>Date of this update:</label>
+          <input type="date" value={date} disabled={allSubmitted} onChange={(e) => onDateChange(e.target.value)} />
+        </div>
+        {goals.map((g, goalIndex) => {
         const locked = !!existing[`${g.id}:${period}`];
         const d = draftFor(g.id);
         return (
@@ -190,10 +215,14 @@ function CheckInPanel({
             </div>
           </div>
         );
-      })}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
-        <button className="btn btn-primary" onClick={handleSubmitAll}>Submit check-in</button>
-      </div>
+        })}
+      </div>}
+      {!allSubmitted && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
+          <button className="btn btn-primary" onClick={handleSubmitAll}>Submit check-in</button>
+        </div>
+      )}
+      <SubmissionNotice open={submittedNotice} title={`${periodLabels[period]} submitted`} message="Your progress update has been saved and is now shown in your Growth Tracker." onClose={() => { setSubmittedNotice(false); onComplete(); }} />
     </div>
   );
 }
