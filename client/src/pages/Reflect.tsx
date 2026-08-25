@@ -102,6 +102,7 @@ export function Reflect() {
 
   return (
     <div className="screen-inner">
+      {submitted && <div className="deadline-lock" role="status"><span aria-hidden="true">&#128274;</span><div><strong>Submission deadline has passed</strong><p>Your submitted reflection is now locked and cannot be edited.</p></div></div>}
       <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '12px 18px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--mid)', whiteSpace: 'nowrap' }}>Reflection progress</div>
         <div style={{ flex: 1, background: 'var(--cream-d)', borderRadius: 20, height: 7, overflow: 'hidden' }}>

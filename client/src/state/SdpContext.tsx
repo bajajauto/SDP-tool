@@ -74,7 +74,7 @@ interface SdpContextValue {
   state: SdpDraftState;
   lastSavedAt: Date | null;
   updateReflection: (patch: Partial<ReflectionDraft>) => void;
-  addGoal: () => void;
+  addGoal: (minimumCount?: number) => void;
   updateGoal: (id: string, patch: Partial<GoalDraft>) => void;
   removeGoal: (id: string) => void;
   submitPlan: (scope: SharingScope) => void;
@@ -110,15 +110,16 @@ export function SdpProvider({ children }: { children: ReactNode }) {
         reflection: { ...s.reflection, ...patch },
       }));
     },
-    addGoal: () => {
+    addGoal: (minimumCount) => {
       setState((s) => {
-        if (s.goals.length >= 3) return s;
-        const goal: GoalDraft = {
-          id: crypto.randomUUID(),
-          title: '', domain: '', whyItMatters: '', grownWhen: '',
+        const targetCount = Math.min(3, minimumCount ?? s.goals.length + 1);
+        if (s.goals.length >= targetCount) return s;
+        const goals = [...s.goals];
+        while (goals.length < targetCount) goals.push({
+          id: crypto.randomUUID(), title: '', domain: '', whyItMatters: '', grownWhen: '',
           actionDo: '', actionLearn: '', actionConnect: '', supportNeeded: '',
-        };
-        return { ...s, goals: [...s.goals, goal] };
+        });
+        return { ...s, goals };
       });
     },
     updateGoal: (id, patch) => {
@@ -128,7 +129,11 @@ export function SdpProvider({ children }: { children: ReactNode }) {
       }));
     },
     removeGoal: (id) => {
-      setState((s) => ({ ...s, goals: s.goals.filter((g) => g.id !== id) }));
+      setState((s) => ({
+        ...s,
+        goals: s.goals.filter((g) => g.id !== id),
+        checkIns: Object.fromEntries(Object.entries(s.checkIns).filter(([key]) => !key.startsWith(`${id}:`))),
+      }));
     },
     submitPlan: (scope) => {
       setState((s) => ({ ...s, status: 'SUBMITTED', sharingScope: scope }));
