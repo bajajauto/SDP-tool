@@ -35,7 +35,11 @@ export function Reflect() {
       : state.reflection.q1Words.length < 3
         ? [...state.reflection.q1Words, word]
         : state.reflection.q1Words;
-    updateReflection({ q1Words: next });
+    const additionalText = state.reflection.q1Text.replace(/^Selected:[^\n]+\n?/, '');
+    const q1Text = next.length > 0
+      ? `Selected: ${next.join(', ')}${additionalText ? `\n${additionalText}` : ''}`
+      : additionalText;
+    updateReflection({ q1Words: next, q1Text });
   }
 
   function handleContinue() {
