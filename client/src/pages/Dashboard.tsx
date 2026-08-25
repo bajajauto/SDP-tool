@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useSdp } from '../state/SdpContext';
-import type { CheckInPeriod, CheckInStatus, Milestone } from '@sdp/shared';
-import { MILESTONE_LABELS, MILESTONE_ORDER } from '@sdp/shared';
+import type { CheckInPeriod, CheckInStatus, GoalDomain } from '@sdp/shared';
 
 type Tab = 'goals' | 'Q1' | 'MID_YEAR' | 'Q2' | 'YEAR_END';
 
@@ -13,42 +12,42 @@ const periodLabels: Record<CheckInPeriod, string> = {
 };
 
 const statusOptions: CheckInStatus[] = ['NOT_STARTED', 'IN_PROGRESS', 'ON_TRACK', 'AT_RISK', 'ACHIEVED'];
+const domainLabels: Record<GoalDomain, string> = { FUNCTIONAL: 'Functional', BEHAVIOURAL: 'Behavioural', LEADERSHIP: 'Leadership' };
 
 export function Dashboard() {
   const { state, submitCheckIn, setCheckInDate } = useSdp();
   const [tab, setTab] = useState<Tab>('goals');
 
-  const milestoneState = (m: Milestone): 'DONE' | 'PENDING' | 'NOT_DUE' => {
-    if (m === 'SDP_SUBMITTED') return state.status !== 'NOT_STARTED' && state.status !== 'DRAFT' ? 'DONE' : 'PENDING';
-    if (m === 'GROWTH_CONVERSATION') return state.conversationConfirmedAt ? 'DONE' : (state.status === 'SUBMITTED' ? 'PENDING' : 'NOT_DUE');
-    if (m === 'Q1_CHECKIN') return hasAnyCheckIn('Q1') ? 'DONE' : 'PENDING';
-    if (m === 'MID_YEAR_CHECKIN') return hasAnyCheckIn('MID_YEAR') ? 'DONE' : 'PENDING';
-    if (m === 'Q2_CHECKIN') return hasAnyCheckIn('Q2') ? 'DONE' : 'PENDING';
-    if (m === 'YEAR_END_CHECKIN') return hasAnyCheckIn('YEAR_END') ? 'DONE' : 'PENDING';
-    return 'NOT_DUE';
-  };
-
   function hasAnyCheckIn(period: CheckInPeriod): boolean {
     return state.goals.some((g) => !!state.checkIns[`${g.id}:${period}`]);
   }
 
+  const timeline = [
+    { label: 'Publish SDP', done: state.status !== 'NOT_STARTED' && state.status !== 'DRAFT', marker: 'S' },
+    { label: 'Quarterly Check-in 1', done: hasAnyCheckIn('Q1'), marker: '1' },
+    { label: 'Mid-Year Conversation', done: hasAnyCheckIn('MID_YEAR'), marker: 'M' },
+    { label: 'Quarterly Check-in 2', done: hasAnyCheckIn('Q2'), marker: '2' },
+    { label: 'Year-End Conversation', done: hasAnyCheckIn('YEAR_END'), marker: 'E' },
+  ];
+  const currentTimelineIndex = timeline.findIndex((item) => !item.done);
+
   return (
-    <div className="screen-inner">
+    <div className="screen-inner wide dashboard-screen">
       <div className="pillar-tag" style={{ background: 'var(--blue-l)', color: 'var(--blue)' }}>Progress Tracker</div>
       <h1 className="page-title">My Growth Tracker</h1>
-      <p className="page-sub" style={{ marginBottom: 24 }}>Track your progress through the year. Write for yourself, not for the system.</p>
+      <p className="page-sub" style={{ marginBottom: 24 }}>Track your progress through the year. Each update takes a few minutes. Write for yourself, not for the system.</p>
 
       <div className="dash-timeline">
-        <div className="dash-tl-label">Milestone timeline</div>
+        <div className="dash-tl-label">Check-in timeline</div>
         <div className="tl-track">
-          {MILESTONE_ORDER.map((m) => {
-            const s = milestoneState(m);
+          {timeline.map((item, index) => {
+            const isCurrent = index === currentTimelineIndex;
             return (
-              <div className="tl-step" key={m}>
-                <div className={`tl-dot ${s === 'DONE' ? 'done' : s === 'PENDING' ? 'now' : 'future'}`}>
-                  {s === 'DONE' ? '✓' : s === 'PENDING' ? '→' : '-'}
+              <div className="tl-step" key={item.label}>
+                <div className={`tl-dot ${item.done ? 'done' : isCurrent ? 'now' : 'future'}`}>
+                  {item.done ? '✓' : isCurrent ? '→' : item.marker}
                 </div>
-                <div className="tl-step-label">{MILESTONE_LABELS[m]}</div>
+                <div className="tl-step-label" style={isCurrent ? { color: 'var(--blue)', fontWeight: 600 } : undefined}>{item.label}</div>
               </div>
             );
           })}
@@ -65,16 +64,17 @@ export function Dashboard() {
       {tab === 'goals' && (
         <div>
           <p style={{ fontSize: 13.5, color: 'var(--mid)', lineHeight: 1.65, marginBottom: 16 }}>
-            Your check-in status across the year, per goal.
+            Your check-in status across the year. Each cell ticks automatically when you complete a check-in for that goal.
           </p>
+          {state.goals.length > 0 && <div className="tracker-goal-count">Tracking all {state.goals.length} development goal{state.goals.length === 1 ? '' : 's'}</div>}
           <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', boxShadow: 'var(--sh)' }}>
             <table className="track-grid">
               <thead>
                 <tr>
                   <th>Goal</th>
-                  <th className="cen">Q1</th>
+                  <th className="cen">Quarterly Check-in 1</th>
                   <th className="cen">Mid-Year</th>
-                  <th className="cen">Q2</th>
+                  <th className="cen">Quarterly Check-in 2</th>
                   <th className="cen">Year-End</th>
                 </tr>
               </thead>
@@ -82,11 +82,12 @@ export function Dashboard() {
                 {state.goals.length === 0 && (
                   <tr><td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)', fontStyle: 'italic' }}>Set development goals first to start tracking.</td></tr>
                 )}
-                {state.goals.map((g) => (
-                  <tr key={g.id}>
+                {state.goals.map((g, goalIndex) => (
+                  <tr key={`${g.id}-${goalIndex}`}>
                     <td>
+                      <div className="tg-number">Development Goal {goalIndex + 1}</div>
                       <div className="tg-goal">{g.title || 'Untitled goal'}</div>
-                      {g.domain && <div className="tg-domain">{g.domain}</div>}
+                      {g.domain && <div className="tg-domain">{domainLabels[g.domain]}</div>}
                     </td>
                     {(['Q1', 'MID_YEAR', 'Q2', 'YEAR_END'] as CheckInPeriod[]).map((p) => {
                       const ci = state.checkIns[`${g.id}:${p}`];
@@ -120,6 +121,7 @@ export function Dashboard() {
           />
         ) : null,
       )}
+      <div className="tracker-help">Track your progress quarterly, with deeper conversations at mid-year and year-end. Each update takes a few minutes.</div>
     </div>
   );
 }
@@ -157,12 +159,13 @@ function CheckInPanel({
         <label>Date of this update:</label>
         <input type="date" value={date} onChange={(e) => onDateChange(e.target.value)} />
       </div>
-      {goals.map((g) => {
+      {goals.map((g, goalIndex) => {
         const locked = !!existing[`${g.id}:${period}`];
         const d = draftFor(g.id);
         return (
-          <div className="dash-goal-card" key={g.id}>
+          <div className="dash-goal-card" key={`${g.id}-${goalIndex}`}>
             <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--cream-border)' }}>
+              <div className="tg-number">Development Goal {goalIndex + 1} of {goals.length}</div>
               <div className="dg-title">{g.title || 'Untitled goal'}</div>
             </div>
             <div style={{ padding: '18px 22px' }}>
