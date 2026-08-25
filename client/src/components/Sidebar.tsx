@@ -41,6 +41,7 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
   function stateFor(item: NavItemDef): 'active' | 'done' | 'locked' | '' {
     if (item.label === 'Reflect') return reflectionCount >= 6 ? 'done' : '';
     if (item.label === 'Set Goals') {
+      if (reflectionCount < 6) return 'locked';
       return goalsComplete ? 'done' : '';
     }
     if (item.label === 'Review and Submit') {

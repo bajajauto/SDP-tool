@@ -28,6 +28,10 @@ export function Vision() {
       return;
     }
     setError(false);
+    if (state.goals.length > 0) {
+      navigate('/goals');
+      return;
+    }
     setPauseOpen(true);
   }
 
