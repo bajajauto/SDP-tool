@@ -35,7 +35,7 @@ export function Landing() {
           <div style={{ display: 'flex', justifyContent: 'center', maxWidth: 680, margin: '0 auto' }}>
             {[
               'Self-reflect on who you are and who you want to become',
-              'Set one to three development goals for yourself',
+              'Set 2-3 development goals for yourself',
               'Build a concrete action plan and track your growth',
             ].map((text, i) => (
               <div key={i} style={{ flex: 1, minWidth: 180, padding: '0 16px', borderRight: i < 2 ? '1px solid rgba(255,255,255,.12)' : undefined }}>
@@ -100,7 +100,7 @@ export function Landing() {
                 become. Not a wish. Not a goal. A declaration.
               </p>
               <p style={{ fontSize: 13.5, color: 'var(--mid)', lineHeight: 1.75, marginBottom: 10 }}>
-                <strong style={{ color: 'var(--ink)' }}>At Bajaj Auto, your Self Development Plan (SDP) is that same declaration.</strong>{' '}
+                <strong style={{ color: 'var(--ink)' }}>At Bajaj Auto, your Self-Development Plan (SDP) is that same declaration.</strong>{' '}
                 It is an opportunity to reflect on who you aspire to be, the strengths you want to
                 build, and the impact you want to create.
               </p>

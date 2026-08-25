@@ -8,7 +8,7 @@ export const copy = {
   landing: {
     heroHeadline: 'A plan you write for yourself, in your own words.',
     heroSubtext:
-      'This is not an appraisal. It is a private reflection, a few concrete goals, and a conversation with your manager.',
+      'This is your space to reflect on who you are today, who you aspire to become, and what it will take to get there. Your Self Development Plan (SDP) is your commitment to turning that aspiration into action.',
     beginCta: 'Begin reflection',
     continueCta: 'Continue reflection',
     viewPlanCta: 'View my plan',
