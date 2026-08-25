@@ -13,7 +13,7 @@ const steps: NavItemDef[] = [
   { to: '/reflect', label: 'Reflect', dot: '1' },
   { to: '/goals', label: 'Set Goals', dot: '2' },
   { to: '/submit', label: 'Review and Submit', dot: '3' },
-  { to: '/dashboard', label: 'Manager Feedback', dot: '✉' },
+  { to: '/manager-feedback', label: 'Manager Feedback', dot: '✉' },
   { to: '/dashboard', label: 'Track Progress', dot: '4' },
 ];
 

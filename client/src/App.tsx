@@ -12,6 +12,7 @@ import { Vision } from './pages/Vision';
 import { Goals } from './pages/Goals';
 import { Submit } from './pages/Submit';
 import { Dashboard } from './pages/Dashboard';
+import { ManagerFeedback } from './pages/ManagerFeedback';
 import { Toolkit } from './pages/Toolkit';
 import { Journal } from './pages/Journal';
 import { Letter } from './pages/Letter';
@@ -71,6 +72,7 @@ export default function App() {
                 <Route path="/goals" element={<Goals />} />
                 <Route path="/submit" element={<Submit />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/manager-feedback" element={<ManagerFeedback />} />
                 <Route path="/toolkit" element={<Toolkit />} />
                 <Route path="/journal" element={<Journal />} />
                 <Route path="/letter" element={<Letter />} />

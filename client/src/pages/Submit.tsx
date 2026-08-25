@@ -81,7 +81,7 @@ export function Submit() {
       ) : (
         <div style={{ background: 'var(--blue-xl)', border: '1px solid var(--blue-l)', borderRadius: 'var(--r)', padding: '18px 22px', marginBottom: 24 }}>
           Growth conversation confirmed on {state.conversationConfirmedAt ? new Date(state.conversationConfirmedAt).toLocaleDateString() : ''}.
-          {' '}<Link to="/dashboard" style={{ fontWeight: 600 }}>Go to your dashboard &rarr;</Link>
+          {' '}<Link to="/manager-feedback" style={{ fontWeight: 600 }}>View manager feedback &rarr;</Link>
         </div>
       )}
 

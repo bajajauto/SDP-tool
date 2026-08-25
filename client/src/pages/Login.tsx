@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import bajajLogo from '../assets/bajaj-logo.png';
+import bajajLogoTransparent from '../assets/bajaj-logo-transparent-tight.png';
 
 export type ViewRole = 'employee' | 'manager' | 'buhr' | 'tdadmin';
 type Profile = { role: ViewRole; initials: string; name: string; label: string; email: string; password: string };
@@ -17,8 +18,8 @@ export function Login({ onSelect }: { onSelect: (role: ViewRole) => void }) {
   const submit = (e: FormEvent) => { e.preventDefault(); const p = profiles.find((x) => x.email.toLowerCase() === email.trim().toLowerCase() && x.password === password); p ? onSelect(p.role) : setError('Credentials do not match a demo profile. Select one below to fill them in.'); };
   return <main className="login-page">
     <section className="login-story" aria-label="About the platform">
-      <div className="login-brand"><div className="login-logo" style={{ width: 260, height: 'auto', border: 0, borderRadius: 10, overflow: 'hidden', background: '#1e4d8c', padding: 8 }}><img src={bajajLogo} alt="Bajaj Auto, The World's Favourite Indian" style={{ width: '100%', maxWidth: 'none', height: 'auto', transform: 'none', display: 'block' }} /></div></div>
-      <div className="login-story-copy"><span className="login-eyebrow">Shape your next chapter</span><h1>Growth begins with a clear sense of direction.</h1><p>Reflect on what matters, set meaningful development goals, and turn everyday work into lasting growth.</p><div className="login-steps"><span><b>01</b> Reflect</span><i/><span><b>02</b> Plan</span><i/><span><b>03</b> Grow</span></div></div>
+      <div className="login-brand" style={{ marginLeft: -8 }}><div className="login-logo" style={{ width: 210, height: 'auto', border: 0, borderRadius: 0, overflow: 'visible', background: 'transparent', padding: 0 }}><img src={bajajLogoTransparent} alt="Bajaj Auto, The World's Favourite Indian" style={{ width: '100%', maxWidth: 'none', height: 'auto', transform: 'none', display: 'block' }} /></div></div>
+      <div className="login-story-copy" style={{ marginTop: 6 }}><span className="login-eyebrow" style={{ fontSize: 'clamp(26px,2.6vw,34px)', fontWeight: 700, letterSpacing: '.02em', textTransform: 'none', color: '#fff', display: 'block' }}>Self-Development Plan</span><h1 style={{ fontSize: 'clamp(18px,1.6vw,22px)', fontWeight: 400, marginTop: 10 }}>Growth begins with a clear sense of direction</h1><div className="login-steps" style={{ marginTop: 36 }}><span><b>01</b> Reflect</span><i/><span><b>02</b> Plan</span><i/><span><b>03</b> Grow</span></div></div>
       <p className="login-quote">“The future depends on what you do today.”</p>
     </section>
     <section className="login-panel"><div className="login-card">
