@@ -24,10 +24,22 @@ import { RouteStub } from './pages/RouteStub';
 import { SdpProvider } from './state/SdpContext';
 import { api } from './lib/api';
 
+const SESSION_VIEW_KEY = 'sdp_authenticated_view_v1';
+const validViews: ViewRole[] = ['employee', 'manager', 'buhr', 'tdadmin'];
+
+function loadSavedView(): ViewRole | null {
+  try {
+    const savedView = localStorage.getItem(SESSION_VIEW_KEY);
+    return validViews.includes(savedView as ViewRole) ? savedView as ViewRole : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [view, setView] = useState<ViewRole | null>(null);
+  const [view, setView] = useState<ViewRole | null>(loadSavedView);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,12 +51,14 @@ export default function App() {
   }
 
   function handleSelectView(role: ViewRole) {
+    localStorage.setItem(SESSION_VIEW_KEY, role);
     setView(role);
     if (role === 'employee') navigate('/');
     if (role === 'manager') navigate('/team');
   }
 
   function handleSignOut() {
+    localStorage.removeItem(SESSION_VIEW_KEY);
     setView(null);
     navigate('/');
   }
