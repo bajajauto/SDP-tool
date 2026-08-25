@@ -13,8 +13,9 @@ const steps: NavItemDef[] = [
   { to: '/reflect', label: 'Reflect', dot: '1' },
   { to: '/goals', label: 'Set Goals', dot: '2' },
   { to: '/submit', label: 'Review and Submit', dot: '3' },
+  { to: '/growth-conversation', label: 'Growth Conversation', dot: '4' },
   { to: '/manager-feedback', label: 'Manager Feedback', dot: '✉' },
-  { to: '/dashboard', label: 'Track Progress', dot: '4' },
+  { to: '/dashboard', label: 'Track Progress', dot: '5' },
 ];
 
 export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => void }) {
@@ -48,8 +49,9 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
       if (!goalsComplete) return 'locked';
       return submitted ? 'done' : '';
     }
-    if (item.label === 'Manager Feedback') return submitted ? '' : 'locked';
-    if (item.label === 'Track Progress') return submitted ? '' : 'locked';
+    if (item.label === 'Growth Conversation') return submitted ? (conversationDone ? 'done' : '') : 'locked';
+    if (item.label === 'Manager Feedback') return conversationDone ? '' : 'locked';
+    if (item.label === 'Track Progress') return conversationDone ? '' : 'locked';
     return '';
   }
 

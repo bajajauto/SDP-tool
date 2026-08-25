@@ -14,8 +14,8 @@ export function ManagerFeedback() {
   const navigate = useNavigate();
   const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
-  if (state.status === 'NOT_STARTED' || state.status === 'DRAFT') {
-    return <Navigate to="/goals" replace />;
+  if (!state.conversationConfirmedAt) {
+    return <Navigate to="/growth-conversation" replace />;
   }
 
   return (

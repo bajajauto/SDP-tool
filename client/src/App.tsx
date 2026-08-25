@@ -13,6 +13,7 @@ import { Goals } from './pages/Goals';
 import { Submit } from './pages/Submit';
 import { Dashboard } from './pages/Dashboard';
 import { ManagerFeedback } from './pages/ManagerFeedback';
+import { GrowthConversation } from './pages/GrowthConversation';
 import { Toolkit } from './pages/Toolkit';
 import { Journal } from './pages/Journal';
 import { Letter } from './pages/Letter';
@@ -85,6 +86,7 @@ export default function App() {
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/goals" element={<Goals />} />
                 <Route path="/submit" element={<Submit />} />
+                <Route path="/growth-conversation" element={<GrowthConversation />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/manager-feedback" element={<ManagerFeedback />} />
                 <Route path="/toolkit" element={<Toolkit />} />
