@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { Role } from '@sdp/shared';
 import { useSdp } from '../state/SdpContext';
+import teamIcon from '../assets/team.png';
 
 export function HomeDashboard({ roles }: { roles: Role[] }) {
   const { state } = useSdp();
@@ -33,7 +34,7 @@ export function HomeDashboard({ roles }: { roles: Role[] }) {
     </section>}
 
     {roles.includes('MANAGER') && <div className="workspace-tiles">
-      <Link to="/team" className="workspace-tile manager-tile"><span className="workspace-tile-icon">&#128101;</span><div><small>For your team</small><h2>Submit feedback for your team</h2><p>Review submitted plans and share thoughtful, actionable feedback.</p><b>View my team &rarr;</b></div></Link>
+      <section className="workspace-tile manager-tile manager-workspace-card"><span className="workspace-tile-icon team-workspace-icon"><img src={teamIcon} alt="" aria-hidden="true" /></span><div className="manager-workspace-copy"><small>For your team</small><h2>Submit feedback for your team</h2><p>Review submitted plans and share thoughtful, actionable feedback.</p></div><Link to="/team" className="btn manager-team-action">View my team &rarr;</Link></section>
     </div>}
 
     <div className="journey-title">Journey steps</div>

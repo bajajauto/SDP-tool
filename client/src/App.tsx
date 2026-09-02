@@ -77,7 +77,7 @@ export default function App() {
     localStorage.setItem(SESSION_VIEW_KEY, role);
     setView(role);
     if (role === 'employee') navigate('/');
-    if (role === 'manager') navigate('/team');
+    if (role === 'manager') navigate('/home');
   }
 
   function handleSignOut() {
