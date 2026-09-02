@@ -13,7 +13,7 @@ export function Toolkit() {
     <div className="screen-inner">
       <h1 className="page-title">Support Toolkit</h1>
       <p className="page-sub" style={{ marginBottom: 32 }}>
-        Resources to help you reflect more effectively and have better development conversations.
+        Resources to help you reflect more effectively and have meaningful development conversations.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
         <Tile title="FAQ Document" desc="Common questions about the SDP process, timelines, and how to make the most of your reflection." onClick={() => setFaqOpen(true)} />
