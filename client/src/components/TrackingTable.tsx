@@ -7,6 +7,7 @@ import type { TrackingRow } from '@sdp/shared';
  * rows (org-wide instead of BU-scoped). Nothing here can render content.
  */
 export function TrackingTable({ rows, showBu }: { rows: TrackingRow[]; showBu?: boolean }) {
+  const formatDate = (value: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
   return (
     <div className="buhr-tablewrap">
       <div className="buhr-table-scroll">
@@ -38,7 +39,7 @@ export function TrackingTable({ rows, showBu }: { rows: TrackingRow[]; showBu?: 
                   return (
                     <td key={m}>
                       <span className={`buhr-chip ${cell.state === 'DONE' ? 'done' : cell.state === 'PENDING' ? 'pending' : 'notdue'}`}>
-                        {cell.state === 'DONE' ? 'Done' : cell.state === 'PENDING' ? 'Pending' : '-'}
+                        {cell.state === 'DONE' && cell.completedAt ? `✓ ${formatDate(cell.completedAt)}` : cell.state === 'DONE' ? '✓ Done' : cell.state === 'PENDING' ? 'Pending' : '-'}
                       </span>
                     </td>
                   );

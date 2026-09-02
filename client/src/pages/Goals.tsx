@@ -22,14 +22,20 @@ function goalSummary(g: GoalDraft): string {
   return parts.join(' · ');
 }
 
+function isGoalComplete(g: GoalDraft): boolean {
+  return Boolean(g.title && g.domain && g.whyItMatters && g.grownWhen
+    && g.actionDo && g.actionLearn && g.actionConnect && g.supportNeeded);
+}
+
 export function Goals() {
-  const { state, addGoal, updateGoal, removeGoal, submitPlan, lastSavedAt } = useSdp();
+  const { state, addGoal, updateGoal, removeGoal, submitPlan, lastSavedAt, saveStatus, loading } = useSdp();
   const navigate = useNavigate();
   const [openGoalId, setOpenGoalId] = useState<string | null>(state.goals[0]?.id ?? null);
   const [sampleDomain, setSampleDomain] = useState<GoalDomain | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [expandedPanels, setExpandedPanels] = useState<string[]>(['domain-guide', 'sample-goals', 'action-templates']);
   const previousGoalCount = useRef(state.goals.length);
   const submitted = state.status !== 'NOT_STARTED' && state.status !== 'DRAFT';
@@ -46,8 +52,10 @@ export function Goals() {
   }, [state.goals]);
 
   useEffect(() => {
-    if (!submitted && state.goals.length < MIN_GOALS) addGoal(MIN_GOALS);
-  }, [state.goals.length, submitted, addGoal]);
+    // Keep one editable card available, but enforce the two-goal minimum
+    // only at submission time so employees can freely add and remove drafts.
+    if (!loading && !submitted && state.goals.length === 0) addGoal();
+  }, [loading, state.goals.length, submitted, addGoal]);
 
   function handleAdd() {
     if (state.goals.length >= MAX_GOALS) return;
@@ -55,36 +63,43 @@ export function Goals() {
   }
 
   function handleRemove(id: string) {
-    if (state.goals.length <= MIN_GOALS) {
-      setError(`Please keep at least ${MIN_GOALS} development goals.`);
-      return;
-    }
     if (!confirm('Remove this development goal?')) return;
     removeGoal(id);
     if (openGoalId === id) setOpenGoalId(null);
   }
 
   function handleSubmitClick() {
+    setValidationAttempted(true);
+    if (saveStatus === 'saving') {
+      setError('Please wait for your latest changes to finish saving, then submit again.');
+      return;
+    }
     if (state.goals.length < MIN_GOALS) {
       setError(`Please add at least ${MIN_GOALS} development goals before submitting.`);
       return;
     }
-    const incomplete = state.goals.find(
-      (g) => !g.title || !g.domain || !g.whyItMatters || !g.grownWhen || !g.actionDo || !g.actionLearn || !g.actionConnect || !g.supportNeeded,
-    );
+    const incompleteGoals = state.goals.filter((goal) => !isGoalComplete(goal));
+    const incomplete = incompleteGoals[0];
     if (incomplete) {
-      setError('Please complete every field for each goal before submitting.');
+      const numbers = incompleteGoals.map((goal) => state.goals.indexOf(goal) + 1).join(', ');
+      setError(`Goal${incompleteGoals.length > 1 ? 's' : ''} ${numbers} ${incompleteGoals.length > 1 ? 'are' : 'is'} incomplete. Complete the highlighted fields or remove the extra goal card before submitting.`);
       setOpenGoalId(incomplete.id);
+      window.setTimeout(() => document.getElementById(`goal-${incomplete.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
       return;
     }
     setError(null);
     setShareOpen(true);
   }
 
-  function handleConfirmShare(scope: SharingScope) {
-    submitPlan(scope);
-    setShareOpen(false);
-    navigate('/submit');
+  async function handleConfirmShare(scope: SharingScope) {
+    try {
+      await submitPlan(scope);
+      setShareOpen(false);
+      navigate('/submit');
+    } catch {
+      setShareOpen(false);
+      setError('Could not submit your plan. Please check your connection and try again.');
+    }
   }
 
   return (
@@ -99,14 +114,20 @@ export function Goals() {
       <div className="goals-layout">
         <div>
           {state.goals.map((g, idx) => (
-            <div className={`dgoal-card-v3${openGoalId === g.id ? ' expanded' : ''}`} key={g.id}>
+            <div id={`goal-${g.id}`} className={`dgoal-card-v3${openGoalId === g.id ? ' expanded' : ''}${validationAttempted && !isGoalComplete(g) ? ' has-errors' : ''}`} key={g.id}>
               <div className="goal-head" onClick={() => setOpenGoalId(openGoalId === g.id ? null : g.id)}>
                 <div className="goal-head-left">
                   <div className="goal-num">Development Goal 0{idx + 1}</div>
                   {goalSummary(g) && <div className="goal-sum">{goalSummary(g)}</div>}
                 </div>
                 <div className="goal-head-right">
-                  <button type="button" className="dgoal-del" disabled={submitted || state.goals.length <= MIN_GOALS} title={submitted ? 'Goals cannot be removed after the submission deadline' : state.goals.length <= MIN_GOALS ? 'A minimum of 2 goals is required' : 'Remove goal'} onClick={(e) => { e.stopPropagation(); handleRemove(g.id); }}>Remove</button>
+                  {validationAttempted && !isGoalComplete(g) && <span className="goal-needs-attention">Needs attention</span>}
+                  {isGoalComplete(g) && <span className={`goal-save-tag ${saveStatus}`}>
+                    {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Not saved' : <>&#10003; Saved</>}
+                  </span>}
+                  <button type="button" className="dgoal-del" disabled={submitted} title={submitted ? 'Goals cannot be removed after submission' : 'Remove goal'} onClick={(e) => { e.stopPropagation(); handleRemove(g.id); }}>
+                    <span aria-hidden="true">&#128465;</span> {submitted ? 'Locked' : 'Remove'}
+                  </button>
                   <span className="goal-chev">&#9660;</span>
                 </div>
               </div>
@@ -115,7 +136,7 @@ export function Goals() {
                   <div style={{ marginBottom: 14 }}>
                     <span className="goal-field-label">Goal Domain</span>
                     <select
-                      className="goal-type-select"
+                      className={`goal-type-select${validationAttempted && !g.domain ? ' field-invalid' : ''}`}
                       value={g.domain}
                       disabled={submitted}
                       onChange={(e) => updateGoal(g.id, { domain: e.target.value as GoalDomain })}
@@ -129,7 +150,7 @@ export function Goals() {
                   <div style={{ marginBottom: 14 }}>
                     <span className="goal-field-label">What I want to build</span>
                     <input
-                      className="g-input"
+                      className={`g-input${validationAttempted && !g.title.trim() ? ' field-invalid' : ''}`}
                       style={{ fontSize: 16, padding: '10px 0', fontFamily: 'var(--serif)' }}
                       placeholder="Give this goal a clear, specific title..."
                       value={g.title}
@@ -139,25 +160,25 @@ export function Goals() {
                   </div>
 
                   <div className="goal-field-row">
-                    <div className="goal-field-col"><span className="goal-field-label">Why does this matter to me?</span><textarea className="q-input" rows={3} placeholder="In your own words, connected to your reflection." value={g.whyItMatters} disabled={submitted} onChange={(e) => updateGoal(g.id, { whyItMatters: e.target.value })} /></div>
-                    <div className="goal-field-col"><span className="goal-field-label">I will know I have grown when...</span><textarea className="q-input" rows={3} placeholder="A behaviour or moment, not a number." value={g.grownWhen} disabled={submitted} onChange={(e) => updateGoal(g.id, { grownWhen: e.target.value })} /></div>
+                    <div className="goal-field-col"><span className="goal-field-label">Why does this matter to me?</span><textarea className={`q-input${validationAttempted && !g.whyItMatters.trim() ? ' field-invalid' : ''}`} rows={3} placeholder="In your own words, connected to your reflection." value={g.whyItMatters} disabled={submitted} onChange={(e) => updateGoal(g.id, { whyItMatters: e.target.value })} /></div>
+                    <div className="goal-field-col"><span className="goal-field-label">I will know I have grown when...</span><textarea className={`q-input${validationAttempted && !g.grownWhen.trim() ? ' field-invalid' : ''}`} rows={3} placeholder="A behaviour or moment, not a number." value={g.grownWhen} disabled={submitted} onChange={(e) => updateGoal(g.id, { grownWhen: e.target.value })} /></div>
                   </div>
 
                   <div className="action-plan-inline">
                     <div className="action-plan-title">Action Plan</div>
                     <div className="action-plan-row">
                       <span className="dlc-label dlc-do">Do · 70%</span>
-                      <textarea rows={2} placeholder="What will I practise, own, or deliver at work?" value={g.actionDo} disabled={submitted} onChange={(e) => updateGoal(g.id, { actionDo: e.target.value })} />
+                      <textarea className={validationAttempted && !g.actionDo.trim() ? 'field-invalid' : ''} rows={2} placeholder="What will I practise, own, or deliver at work?" value={g.actionDo} disabled={submitted} onChange={(e) => updateGoal(g.id, { actionDo: e.target.value })} />
                     </div>
                     <div className="action-plan-row">
                       <span className="dlc-label dlc-learn">Learn · 10%</span>
-                      <textarea rows={2} placeholder="What will I read, study, or complete?" value={g.actionLearn} disabled={submitted} onChange={(e) => updateGoal(g.id, { actionLearn: e.target.value })} />
+                      <textarea className={validationAttempted && !g.actionLearn.trim() ? 'field-invalid' : ''} rows={2} placeholder="What will I read, study, or complete?" value={g.actionLearn} disabled={submitted} onChange={(e) => updateGoal(g.id, { actionLearn: e.target.value })} />
                     </div>
                     <div className="action-plan-row">
                       <span className="dlc-label dlc-connect">Connect · 20%</span>
-                      <textarea rows={2} placeholder="Who will I observe, learn from, or ask for feedback?" value={g.actionConnect} disabled={submitted} onChange={(e) => updateGoal(g.id, { actionConnect: e.target.value })} />
+                      <textarea className={validationAttempted && !g.actionConnect.trim() ? 'field-invalid' : ''} rows={2} placeholder="Who will I observe, learn from, or ask for feedback?" value={g.actionConnect} disabled={submitted} onChange={(e) => updateGoal(g.id, { actionConnect: e.target.value })} />
                     </div>
-                    <div className="support-field"><label>Support I need</label><textarea rows={2} placeholder="What do you need from your manager or the organisation? Be specific." value={g.supportNeeded} disabled={submitted} onChange={(e) => updateGoal(g.id, { supportNeeded: e.target.value })} /></div>
+                    <div className="support-field"><label>Support I need</label><textarea className={validationAttempted && !g.supportNeeded.trim() ? 'field-invalid' : ''} rows={2} placeholder="What do you need from your manager or the organisation? Be specific." value={g.supportNeeded} disabled={submitted} onChange={(e) => updateGoal(g.id, { supportNeeded: e.target.value })} /></div>
                   </div>
                 </div>
               )}
@@ -200,8 +221,8 @@ export function Goals() {
 
       <div className="nav-row">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <SaveIndicator lastSavedAt={lastSavedAt} />
-          {!submitted && <button className="btn btn-primary" onClick={handleSubmitClick}>Submit plan &rarr;</button>}
+          <SaveIndicator lastSavedAt={lastSavedAt} saveStatus={saveStatus} />
+          {!submitted && <button className="btn btn-primary" disabled={saveStatus === 'saving'} onClick={handleSubmitClick}>{saveStatus === 'saving' ? 'Saving changes...' : 'Submit plan →'}</button>}
         </div>
       </div>
 

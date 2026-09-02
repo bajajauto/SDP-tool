@@ -8,11 +8,27 @@ export function Landing() {
   const { state } = useSdp();
   const navigate = useNavigate();
   const [beginOpen, setBeginOpen] = useState(false);
-  const ctaLabel =
-    state.status === 'NOT_STARTED' ? copy.landing.beginCta
-    : state.status === 'DRAFT' ? copy.landing.continueCta
-    : copy.landing.viewPlanCta;
-  const ctaTarget = state.status === 'NOT_STARTED' || state.status === 'DRAFT' ? '/reflect' : '/dashboard';
+  const reflectionComplete = (state.reflection.q1Words.length > 0 || state.reflection.q1Text.trim().length > 0)
+    && [state.reflection.q2Text, state.reflection.q3Text, state.reflection.q4Text, state.reflection.q5Text, state.reflection.q6Text]
+      .every((answer) => answer.trim().length >= 80);
+  const goalsComplete = state.goals.length >= 2 && state.goals.every(
+    (goal) => goal.title && goal.domain && goal.whyItMatters && goal.grownWhen && goal.actionDo && goal.actionLearn && goal.actionConnect && goal.supportNeeded,
+  );
+  const submitted = state.status !== 'NOT_STARTED' && state.status !== 'DRAFT';
+  const conversationComplete = !!state.conversationConfirmedAt;
+  const nextAction = state.status === 'NOT_STARTED'
+    ? { label: copy.landing.beginCta, target: '/reflect' }
+    : !reflectionComplete
+      ? { label: 'Continue reflection', target: '/reflect' }
+      : !goalsComplete
+        ? { label: 'Continue development goals', target: '/goals' }
+        : !submitted
+          ? { label: 'Review and submit', target: '/submit' }
+          : !conversationComplete
+            ? { label: 'Continue growth conversation', target: '/growth-conversation' }
+            : { label: copy.landing.viewPlanCta, target: '/dashboard' };
+  const ctaLabel = nextAction.label;
+  const ctaTarget = nextAction.target;
 
   function handleCta() {
     if (state.status === 'NOT_STARTED') setBeginOpen(true);
@@ -21,15 +37,15 @@ export function Landing() {
 
   return (
     <div>
-      <div style={{ background: 'var(--blue-d)', padding: '64px 0 56px' }}>
+      <div style={{ background: 'var(--blue-d)', padding: '32px 0 30px' }}>
         <div style={{ maxWidth: 780, margin: '0 auto', padding: '0 40px', textAlign: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', marginBottom: 18 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', marginBottom: 9 }}>
             Bajaj Auto &middot; 2026-27
           </div>
-          <h1 style={{ fontFamily: 'var(--serif)', fontSize: 48, fontWeight: 400, color: '#fff', lineHeight: 1.12, marginBottom: 20 }}>
+          <h1 style={{ fontFamily: 'var(--serif)', fontSize: 38, fontWeight: 400, color: '#fff', lineHeight: 1.12, marginBottom: 11 }}>
             Your Self Development Plan
           </h1>
-          <p style={{ fontSize: 15.5, color: 'rgba(255,255,255,.72)', lineHeight: 1.75, maxWidth: 640, margin: '0 auto 32px' }}>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,.72)', lineHeight: 1.6, maxWidth: 640, margin: '0 auto 20px' }}>
             {copy.landing.heroSubtext}
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', maxWidth: 680, margin: '0 auto' }}>
@@ -38,12 +54,15 @@ export function Landing() {
               'Set 2-3 development goals for yourself',
               'Build a concrete action plan and track your growth',
             ].map((text, i) => (
-              <div key={i} style={{ flex: 1, minWidth: 180, padding: '0 16px', borderRight: i < 2 ? '1px solid rgba(255,255,255,.12)' : undefined }}>
-                <div style={{ fontFamily: 'var(--serif)', fontSize: 22, color: '#fff', marginBottom: 4 }}>0{i + 1}</div>
-                <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.65)', lineHeight: 1.55 }}>{text}</div>
+              <div key={i} style={{ flex: 1, minWidth: 180, padding: '0 14px', borderRight: i < 2 ? '1px solid rgba(255,255,255,.12)' : undefined }}>
+                <div style={{ fontFamily: 'var(--serif)', fontSize: 18, color: '#fff', marginBottom: 2 }}>0{i + 1}</div>
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.65)', lineHeight: 1.45 }}>{text}</div>
               </div>
             ))}
           </div>
+          <button className="btn btn-primary btn-lg landing-primary-cta" onClick={handleCta}>
+            {ctaLabel} &rarr;
+          </button>
         </div>
       </div>
 

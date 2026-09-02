@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
+import type { Role } from '@sdp/shared';
 import { useSdp } from '../state/SdpContext';
 
-export function HomeDashboard() {
+export function HomeDashboard({ roles }: { roles: Role[] }) {
   const { state } = useSdp();
-  const reflectionComplete = [state.reflection.q1Text, state.reflection.q2Text, state.reflection.q3Text, state.reflection.q4Text, state.reflection.q5Text, state.reflection.q6Text].every((answer) => answer.trim().length > 0);
+  const reflectionComplete = (state.reflection.q1Words.length > 0 || state.reflection.q1Text.trim().length > 0)
+    && [state.reflection.q2Text, state.reflection.q3Text, state.reflection.q4Text, state.reflection.q5Text, state.reflection.q6Text].every((answer) => answer.trim().length >= 80);
   const goalsComplete = state.goals.length >= 2 && state.goals.every((goal) => goal.title && goal.domain && goal.whyItMatters && goal.grownWhen && goal.actionDo && goal.actionLearn && goal.actionConnect && goal.supportNeeded);
   const submitted = state.status !== 'NOT_STARTED' && state.status !== 'DRAFT';
   const conversationComplete = !!state.conversationConfirmedAt;
@@ -18,14 +20,21 @@ export function HomeDashboard() {
     { title: 'Manager Feedback', detail: 'Receive feedback on your submitted development plan', to: '/manager-feedback', done: false, available: conversationComplete },
   ];
   const currentIndex = journey.findIndex((step) => step.available && !step.done);
+  const nextStep = journey[currentIndex];
+  const completedCount = journey.filter((step) => step.done).length;
 
   return <div className="screen-inner wide home-dashboard">
-    <div className="home-dashboard-heading"><div><h1 className="page-title">Your SDP workspace</h1><p className="page-sub">Continue your own journey or support your team from one place.</p></div></div>
+    <div className="home-dashboard-heading"><div><h1 className="page-title">Your SDP workspace</h1><p className="page-sub">See where you are and continue from the next step.</p></div></div>
 
-    <div className="workspace-tiles has-manager">
-      <Link to="/reflect" className="workspace-tile self-tile"><span className="workspace-tile-icon">&#9672;</span><div><small>For you</small><h2>My Self-Development Plan</h2><p>Continue reflecting, shaping goals, and tracking your growth.</p><b>Open my SDP &rarr;</b></div></Link>
+    {nextStep && <section className="next-step-card" aria-label="Your next step">
+      <div className="next-step-marker">{currentIndex + 1}</div>
+      <div className="next-step-copy"><small>Your next step &middot; {completedCount} of {journey.length} complete</small><h2>{nextStep.title}</h2><p>{nextStep.detail}</p></div>
+      <Link to={nextStep.to} className="btn btn-primary">Continue &rarr;</Link>
+    </section>}
+
+    {roles.includes('MANAGER') && <div className="workspace-tiles">
       <Link to="/team" className="workspace-tile manager-tile"><span className="workspace-tile-icon">&#128101;</span><div><small>For your team</small><h2>Submit feedback for your team</h2><p>Review submitted plans and share thoughtful, actionable feedback.</p><b>View my team &rarr;</b></div></Link>
-    </div>
+    </div>}
 
     <div className="journey-title">Journey steps</div>
     <section className="journey-status-card">

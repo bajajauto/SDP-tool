@@ -1,0 +1,33 @@
+openapi: 3.1.0
+info: { title: SDP Tool API, version: 0.2.0 }
+servers: [{ url: http://localhost:4100/api }]
+security: [{ corporateSession: [] }]
+components:
+  securitySchemes:
+    corporateSession: { type: apiKey, in: cookie, name: sdp_session, description: Corporate OIDC session in production. Development mode uses the gated x-employee-id header. }
+  schemas:
+    Error: { type: object, properties: { error: { type: object, properties: { code: { type: string }, message: { type: string }, details: {} }, required: [code, message] } }, required: [error] }
+paths:
+  /health: { get: { security: [], responses: { '200': { description: Healthy } } } }
+  /me: { get: { responses: { '200': { description: Profile, derived roles, active cycle, and SDP status }, '403': { description: No active EC record } } } }
+  /sdp: { get: { responses: { '200': { description: Own active-cycle SDP } } } }
+  /sdp/reflection: { patch: { summary: Autosave own draft reflection, responses: { '200': { description: Server-acknowledged save }, '409': { description: Immutable SDP or version conflict } } } }
+  /sdp/goals: { post: { summary: Add an own draft goal, responses: { '201': { description: Created }, '409': { description: Goal limit or immutable SDP } } } }
+  /sdp/goals/{goalId}:
+    parameters: [{ name: goalId, in: path, required: true, schema: { type: string, format: uuid } }]
+    patch: { summary: Autosave an owned goal, responses: { '200': { description: Saved } } }
+    delete: { summary: Delete an owned draft goal, responses: { '204': { description: Deleted } } }
+  /sdp/submit: { post: { summary: Validate and atomically submit own SDP, responses: { '200': { description: Submitted }, '422': { description: Validation failure } } } }
+  /sdp/confirm-conversation: { post: { responses: { '200': { description: Conversation confirmed } } } }
+  /journal: { get: { summary: List only the authenticated employee's journal }, post: { summary: Create an own journal entry } }
+  /journal/{entryId}:
+    parameters: [{ name: entryId, in: path, required: true, schema: { type: string, format: uuid } }]
+    patch: { summary: Update an own journal entry }
+    delete: { summary: Soft-delete and clear an own journal entry }
+  /team: { get: { summary: Direct active reportees only } }
+  /team/{employeeId}: { get: { summary: Server-projected shared SDP, with reflection omitted for GOALS_ONLY } }
+  /hr/tracking: { get: { summary: Status-only projection, BU-scoped for BUHR and organization-wide for TD Admin } }
+  /admin/cycle: { get: { summary: Active cycle }, put: { summary: Configure cycle } }
+  /admin/audit: { get: { summary: Append-only audit view } }
+  /admin/data-gaps: { get: { summary: EC data-quality gaps } }
+  /admin/ec-sync: { post: { summary: Trigger the configured EC adapter } }

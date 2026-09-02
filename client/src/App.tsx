@@ -24,7 +24,7 @@ import { TdAdminDashboard } from './pages/TdAdminDashboard';
 import { HomeDashboard } from './pages/HomeDashboard';
 import { RouteStub } from './pages/RouteStub';
 import { SdpProvider } from './state/SdpContext';
-import { api } from './lib/api';
+import { api, clearDevEmployeeId, DEMO_IDENTITIES, setDevEmployeeId } from './lib/api';
 
 const SESSION_VIEW_KEY = 'sdp_authenticated_view_v1';
 const validViews: ViewRole[] = ['employee', 'manager', 'buhr', 'tdadmin'];
@@ -41,13 +41,27 @@ function loadSavedView(): ViewRole | null {
 export default function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [view, setView] = useState<ViewRole | null>(loadSavedView);
+  // The identity must be resolved synchronously, in the same tick as
+  // restoring/setting `view` - not in a reactive effect. Effects for a
+  // newly-mounted tree run children-first, so any child that fetches on
+  // mount (Team, HrDashboard...) would otherwise race ahead of an
+  // App-level effect and fire its first request under the previous
+  // (or default) identity. Resolving it inside the state initializer, and
+  // again synchronously inside handleSelectView before setView(), closes
+  // that race for both the "restored session" and "just logged in" paths.
+  const [view, setView] = useState<ViewRole | null>(() => {
+    const restored = loadSavedView();
+    if (restored) setDevEmployeeId(DEMO_IDENTITIES[restored]);
+    return restored;
+  });
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
+    if (!view) return;
+    setAccessDenied(false);
     api.me().then(setMe).catch(() => setAccessDenied(true));
-  }, []);
+  }, [view]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -59,6 +73,7 @@ export default function App() {
   }
 
   function handleSelectView(role: ViewRole) {
+    setDevEmployeeId(DEMO_IDENTITIES[role]);
     localStorage.setItem(SESSION_VIEW_KEY, role);
     setView(role);
     if (role === 'employee') navigate('/');
@@ -67,7 +82,9 @@ export default function App() {
 
   function handleSignOut() {
     localStorage.removeItem(SESSION_VIEW_KEY);
+    clearDevEmployeeId();
     setView(null);
+    setMe(null);
     navigate('/');
   }
 
@@ -80,20 +97,24 @@ export default function App() {
   }
 
   return (
-    <SdpProvider>
+    // Keyed on `view` so switching identity (Employee/Manager/BUHR/TD Admin)
+    // fully remounts the SDP data layer instead of continuing to show
+    // whichever identity's reflection/goals happened to load first.
+    <SdpProvider key={view}>
       <div className="app-shell">
         <TopBar me={me} view={view} onSwitchView={handleSelectView} onSignOut={handleSignOut} />
-        {view === 'buhr' ? (
-          <main className="app-main"><HrDashboard /></main>
-        ) : view === 'tdadmin' ? (
-          <main className="app-main"><TdAdminDashboard /></main>
-        ) : (
-          <div style={{ display: 'flex', flex: 1 }}>
-            <Sidebar roles={me?.roles ?? []} onSignOut={handleSignOut} />
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          <Sidebar roles={me?.roles ?? []} onSignOut={handleSignOut} />
+          {view === 'buhr' ? (
+            <main className="app-main" style={{ flex: 1, minWidth: 0 }}><HrDashboard /></main>
+          ) : view === 'tdadmin' ? (
+            <main className="app-main" style={{ flex: 1, minWidth: 0 }}><TdAdminDashboard /></main>
+          ) : (
+            <>
             <main className="app-main" style={{ flex: 1, minWidth: 0 }}>
               {location.pathname !== '/home' && location.pathname !== '/' && <div className="section-back-wrap"><button type="button" className="section-back" onClick={handleBack}>&larr; Back</button></div>}
               <Routes>
-                <Route path="/home" element={<HomeDashboard />} />
+                <Route path="/home" element={<HomeDashboard roles={me?.roles ?? []} />} />
                 <Route path="/" element={<Landing />} />
                 <Route path="/reflect" element={<Reflect />} />
                 <Route path="/vision" element={<Vision />} />
@@ -111,8 +132,9 @@ export default function App() {
               </Routes>
             </main>
             <JournalFab />
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </SdpProvider>
   );

@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, type TeamReportee } from '../lib/api';
+import { api, ApiError, type TeamReportee } from '../lib/api';
 
 export function Team() {
   const [reportees, setReportees] = useState<TeamReportee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.team.list().then((list) => { setReportees(list); setLoading(false); }).catch(() => setLoading(false));
+    setLoading(true);
+    setError(null);
+    api.team.list().then((list) => { setReportees(list); setLoading(false); }).catch((err) => {
+      setError(err instanceof ApiError && err.status === 403
+        ? "Your account isn't mapped as a manager for any reportees."
+        : 'Could not load your team. Please try again.');
+      setLoading(false);
+    });
   }, []);
 
   return (
@@ -18,7 +26,12 @@ export function Team() {
       </p>
 
       {loading && <p style={{ color: 'var(--muted)' }}>Loading...</p>}
-      {!loading && reportees.length === 0 && (
+      {!loading && error && (
+        <div className="placeholder-card" role="alert">
+          <p>{error}</p>
+        </div>
+      )}
+      {!loading && !error && reportees.length === 0 && (
         <div className="placeholder-card">
           <p>No direct reportees mapped to you yet.</p>
         </div>

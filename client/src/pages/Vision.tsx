@@ -15,7 +15,7 @@ const chapters = [
 ];
 
 export function Vision() {
-  const { state, updateReflection, lastSavedAt } = useSdp();
+  const { state, updateReflection, lastSavedAt, saveStatus } = useSdp();
   const navigate = useNavigate();
   const [guideOpen, setGuideOpen] = useState(false);
   const [error, setError] = useState(false);
@@ -95,7 +95,7 @@ export function Vision() {
 
       <div className="nav-row">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <SaveIndicator lastSavedAt={lastSavedAt} />
+          <SaveIndicator lastSavedAt={lastSavedAt} saveStatus={saveStatus} />
           <button className="btn btn-primary" onClick={handleContinue}>{visionComplete ? 'Next' : 'Continue to Goal Setting'} &rarr;</button>
         </div>
       </div>

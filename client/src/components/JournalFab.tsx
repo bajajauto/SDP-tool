@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useSdp } from '../state/SdpContext';
+import journalIcon from '../assets/journal icon.png';
 
 export function JournalFab() {
   const location = useLocation();
@@ -15,8 +16,12 @@ export function JournalFab() {
         </Link>
       )}
       {showJournal && (
-        <Link to="/journal" className="journal-fab">
-          <span>&#128211;</span> My Journal
+        <Link to="/journal" className="journal-fab journal-entry-fab" aria-label="Open My Journal — something on your mind?">
+          <img className="journal-fab-icon" src={journalIcon} alt="" aria-hidden="true" />
+          <span className="journal-labels">
+            <span className="journal-label-default">My Journal</span>
+            <span className="journal-label-hover">Something on your mind?</span>
+          </span>
         </Link>
       )}
     </>

@@ -1,0 +1,371 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CycleStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+enum SdpStatus {
+  NOT_STARTED
+  DRAFT
+  SUBMITTED
+  CONVERSATION_CONFIRMED
+  IN_PROGRESS
+  CLOSED
+}
+
+enum SharingScope {
+  FULL
+  GOALS_ONLY
+}
+
+enum GoalDomain {
+  FUNCTIONAL
+  BEHAVIOURAL
+  LEADERSHIP
+}
+
+enum CheckInPeriod {
+  Q1
+  MID_YEAR
+  Q2
+  YEAR_END
+}
+
+enum CheckInStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ON_TRACK
+  AT_RISK
+  ACHIEVED
+}
+
+enum FeedbackType {
+  PLAN
+  MID_YEAR
+  YEAR_END
+}
+
+enum SupportNeedStatus {
+  OPEN
+  ACTIONED
+}
+
+enum Role {
+  EMPLOYEE
+  MANAGER
+  BUHR
+  TD_ADMIN
+}
+
+enum TemplateScope {
+  SYSTEM_DEFAULT
+  TD_ADMIN
+  BUHR
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  BOUNCED
+  FAILED
+}
+
+enum SyncStatus {
+  STARTED
+  COMPLETED
+  FAILED
+  ABORTED
+}
+
+model Employee {
+  employeeId           String            @id @map("employee_id")
+  fullName             String            @map("full_name")
+  email                String            @unique
+  managerEmployeeId    String?           @map("manager_employee_id")
+  managerEmail         String?           @map("manager_email")
+  buhrEmployeeId       String?           @map("buhr_employee_id")
+  buhrEmail            String?           @map("buhr_email")
+  bu                   String
+  function             String
+  department           String
+  designation          String
+  buHeadEmployeeId     String?           @map("bu_head_employee_id")
+  hireDate             DateTime          @map("hire_date") @db.Date
+  isActive             Boolean           @default(true) @map("is_active")
+  lastSyncedAt         DateTime          @default(now()) @map("last_synced_at")
+  syncGaps             String[]          @default([]) @map("sync_gaps")
+  manager              Employee?         @relation("ManagerReports", fields: [managerEmployeeId], references: [employeeId], onDelete: SetNull)
+  reportees            Employee[]        @relation("ManagerReports")
+  buhr                 Employee?         @relation("BuhrEmployees", fields: [buhrEmployeeId], references: [employeeId], onDelete: SetNull)
+  buhrEmployees        Employee[]        @relation("BuhrEmployees")
+  sdps                 Sdp[]
+  journalEntries       JournalEntry[]
+  roleGrants           RoleGrant[]
+  authoredFeedback     ManagerFeedback[]
+  actionedSupportNeeds SupportNeed[]
+  auditEvents          AuditLog[]        @relation("AuditActor")
+  subjectAuditEvents   AuditLog[]        @relation("AuditSubject")
+
+  @@index([managerEmployeeId])
+  @@index([buhrEmployeeId, bu])
+  @@index([isActive, bu, department])
+  @@map("employees")
+}
+
+model RoleGrant {
+  employeeId String   @map("employee_id")
+  role       Role
+  employee   Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
+
+  @@id([employeeId, role])
+  @@map("role_grants")
+}
+
+model Cycle {
+  cycleId        String      @id @default(uuid()) @map("cycle_id")
+  label          String      @unique
+  startDate      DateTime    @map("start_date") @db.Date
+  hireDateCutoff DateTime    @map("hire_date_cutoff") @db.Date
+  q1WindowStart  DateTime    @map("q1_window_start") @db.Date
+  q1WindowEnd    DateTime    @map("q1_window_end") @db.Date
+  midYearCutoff  DateTime    @map("mid_year_cutoff") @db.Date
+  q2WindowStart  DateTime    @map("q2_window_start") @db.Date
+  q2WindowEnd    DateTime    @map("q2_window_end") @db.Date
+  yearEndCutoff  DateTime    @map("year_end_cutoff") @db.Date
+  status         CycleStatus @default(DRAFT)
+  isReopened     Boolean     @default(false) @map("is_reopened")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  sdps           Sdp[]
+
+  @@index([status])
+  @@map("cycles")
+}
+
+model Sdp {
+  sdpId                     String            @id @default(uuid()) @map("sdp_id")
+  employeeId                String            @map("employee_id")
+  cycleId                   String            @map("cycle_id")
+  status                    SdpStatus         @default(NOT_STARTED)
+  sharingScope              SharingScope?     @map("sharing_scope")
+  submittedAt               DateTime?         @map("submitted_at")
+  conversationConfirmedAt   DateTime?         @map("conversation_confirmed_at")
+  managerEmployeeIdSnapshot String?           @map("manager_employee_id_snapshot")
+  lastSavedAt               DateTime          @default(now()) @map("last_saved_at")
+  version                   Int               @default(1)
+  createdAt                 DateTime          @default(now()) @map("created_at")
+  updatedAt                 DateTime          @updatedAt @map("updated_at")
+  employee                  Employee          @relation(fields: [employeeId], references: [employeeId])
+  cycle                     Cycle             @relation(fields: [cycleId], references: [cycleId])
+  reflection                Reflection?
+  goals                     Goal[]
+  checkIns                  CheckIn[]
+  managerFeedback           ManagerFeedback[]
+  supportNeeds              SupportNeed[]
+  emailLogs                 EmailLog[]
+
+  @@unique([employeeId, cycleId])
+  @@index([cycleId, status])
+  @@map("sdps")
+}
+
+model Reflection {
+  sdpId   String   @id @map("sdp_id")
+  q1Words String[] @default([]) @map("q1_words")
+  q1Text  String?  @map("q1_text") @db.Text
+  q2Text  String   @default("") @map("q2_text") @db.Text
+  q3Text  String   @default("") @map("q3_text") @db.Text
+  q4Text  String   @default("") @map("q4_text") @db.Text
+  q5Text  String   @default("") @map("q5_text") @db.Text
+  q6Text  String   @default("") @map("q6_text") @db.Text
+  sdp     Sdp      @relation(fields: [sdpId], references: [sdpId], onDelete: Cascade)
+
+  @@map("reflections")
+}
+
+model Goal {
+  goalId        String        @id @default(uuid()) @map("goal_id")
+  sdpId         String        @map("sdp_id")
+  sortOrder     Int           @map("sort_order")
+  title         String        @default("")
+  domain        GoalDomain    @default(FUNCTIONAL)
+  whyItMatters  String        @default("") @map("why_it_matters") @db.Text
+  grownWhen     String        @default("") @map("grown_when") @db.Text
+  actionDo      String        @default("") @map("action_do") @db.Text
+  actionLearn   String        @default("") @map("action_learn") @db.Text
+  actionConnect String        @default("") @map("action_connect") @db.Text
+  supportNeeded String        @default("") @map("support_needed") @db.Text
+  sdp           Sdp           @relation(fields: [sdpId], references: [sdpId], onDelete: Cascade)
+  checkIns      CheckIn[]
+  supportNeeds  SupportNeed[]
+
+  @@unique([sdpId, sortOrder])
+  @@index([sdpId])
+  @@map("goals")
+}
+
+model CheckIn {
+  checkInId    String        @id @default(uuid()) @map("check_in_id")
+  sdpId        String        @map("sdp_id")
+  goalId       String?       @map("goal_id")
+  period       CheckInPeriod
+  progressNote String        @map("progress_note") @db.Text
+  status       CheckInStatus
+  submittedAt  DateTime      @default(now()) @map("submitted_at")
+  sdp          Sdp           @relation(fields: [sdpId], references: [sdpId], onDelete: Cascade)
+  goal         Goal?         @relation(fields: [goalId], references: [goalId], onDelete: SetNull)
+
+  @@unique([sdpId, goalId, period])
+  @@map("check_ins")
+}
+
+model ManagerFeedback {
+  feedbackId       String       @id @default(uuid()) @map("feedback_id")
+  sdpId            String       @map("sdp_id")
+  type             FeedbackType
+  authorEmployeeId String       @map("author_employee_id")
+  body             String       @db.Text
+  sharedAt         DateTime?    @map("shared_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  sdp              Sdp          @relation(fields: [sdpId], references: [sdpId], onDelete: Cascade)
+  author           Employee     @relation(fields: [authorEmployeeId], references: [employeeId])
+
+  @@unique([sdpId, type])
+  @@map("manager_feedback")
+}
+
+model SupportNeed {
+  supportNeedId      String            @id @default(uuid()) @map("support_need_id")
+  sdpId              String            @map("sdp_id")
+  goalId             String?           @map("goal_id")
+  body               String            @db.Text
+  status             SupportNeedStatus @default(OPEN)
+  actionedBy         String?           @map("actioned_by")
+  actionedAt         DateTime?         @map("actioned_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  sdp                Sdp               @relation(fields: [sdpId], references: [sdpId], onDelete: Cascade)
+  goal               Goal?             @relation(fields: [goalId], references: [goalId], onDelete: SetNull)
+  actionedByEmployee Employee?         @relation(fields: [actionedBy], references: [employeeId])
+
+  @@index([sdpId, status])
+  @@map("support_needs")
+}
+
+model JournalEntry {
+  entryId    String    @id @default(uuid()) @map("entry_id")
+  employeeId String    @map("employee_id")
+  body       String    @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+  employee   Employee  @relation(fields: [employeeId], references: [employeeId])
+
+  @@index([employeeId, deletedAt, createdAt])
+  @@map("journal_entries")
+}
+
+model EmailTemplate {
+  templateId String        @id @default(uuid()) @map("template_id")
+  key        String
+  scope      TemplateScope
+  buId       String?       @map("bu_id")
+  subject    String
+  bodyHtml   String        @map("body_html") @db.Text
+  updatedBy  String?       @map("updated_by")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  @@unique([key, scope, buId])
+  @@map("email_templates")
+}
+
+model EmailLog {
+  emailId           String      @id @default(uuid()) @map("email_id")
+  templateKey       String      @map("template_key")
+  toEmail           String      @map("to_email")
+  fromEmail         String      @map("from_email")
+  subject           String
+  sdpId             String?     @map("sdp_id")
+  triggeredBy       String      @map("triggered_by")
+  idempotencyKey    String      @unique @map("idempotency_key")
+  status            EmailStatus @default(QUEUED)
+  providerMessageId String?     @map("provider_message_id")
+  sentAt            DateTime?   @map("sent_at")
+  error             String?
+  attempts          Int         @default(0)
+  createdAt         DateTime    @default(now()) @map("created_at")
+  sdp               Sdp?        @relation(fields: [sdpId], references: [sdpId], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("email_log")
+}
+
+model AuditLog {
+  auditId           String    @id @default(uuid()) @map("audit_id")
+  actorEmployeeId   String?   @map("actor_employee_id")
+  actorRole         Role?     @map("actor_role")
+  action            String
+  entityType        String    @map("entity_type")
+  entityId          String    @map("entity_id")
+  subjectEmployeeId String?   @map("subject_employee_id")
+  metadata          Json      @default("{}")
+  ipAddress         String?   @map("ip_address")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  actor             Employee? @relation("AuditActor", fields: [actorEmployeeId], references: [employeeId], onDelete: SetNull)
+  subject           Employee? @relation("AuditSubject", fields: [subjectEmployeeId], references: [employeeId], onDelete: SetNull)
+
+  @@index([action, createdAt])
+  @@index([subjectEmployeeId, createdAt])
+  @@map("audit_log")
+}
+
+model SyncRun {
+  syncRunId        String     @id @default(uuid()) @map("sync_run_id")
+  status           SyncStatus @default(STARTED)
+  sourceCount      Int?       @map("source_count")
+  createdCount     Int        @default(0) @map("created_count")
+  updatedCount     Int        @default(0) @map("updated_count")
+  deactivatedCount Int        @default(0) @map("deactivated_count")
+  flaggedCount     Int        @default(0) @map("flagged_count")
+  error            String?
+  startedAt        DateTime   @default(now()) @map("started_at")
+  completedAt      DateTime?  @map("completed_at")
+
+  @@index([startedAt])
+  @@map("sync_runs")
+}
+
+model Announcement {
+  announcementId String    @id @default(uuid()) @map("announcement_id")
+  subject        String
+  bodyHtml       String    @map("body_html") @db.Text
+  audience       Json
+  createdBy      String    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  sentAt         DateTime? @map("sent_at")
+
+  @@map("announcements")
+}
+
+model LeaderSample {
+  sampleId          String  @id @default(uuid()) @map("sample_id")
+  leaderName        String  @map("leader_name")
+  leaderDesignation String  @map("leader_designation")
+  bu                String?
+  contentHtml       String  @map("content_html") @db.Text
+  sortOrder         Int     @map("sort_order")
+  isPublished       Boolean @default(false) @map("is_published")
+
+  @@index([bu, isPublished, sortOrder])
+  @@map("leader_samples")
+}

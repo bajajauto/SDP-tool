@@ -67,6 +67,8 @@ export interface Sdp {
   sharingScope: SharingScope | null;
   submittedAt: string | null;
   conversationConfirmedAt: string | null;
+  lastSavedAt: string;
+  version: number;
   reflection: Reflection | null;
   goals: Goal[];
 }

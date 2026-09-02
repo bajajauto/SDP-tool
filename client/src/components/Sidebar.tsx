@@ -29,11 +29,12 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
     state.reflection.q5Text.trim().length >= 80,
     state.reflection.q6Text.trim().length >= 80,
   ].filter(Boolean).length;
-  const goalsComplete = state.goals.length > 0 && state.goals.every(
+  const goalsComplete = state.goals.length >= 2 && state.goals.every(
     (g) => g.title && g.domain && g.whyItMatters && g.grownWhen && g.actionDo && g.actionLearn && g.actionConnect && g.supportNeeded,
   );
   const submitted = state.status !== 'NOT_STARTED' && state.status !== 'DRAFT';
   const conversationDone = !!state.conversationConfirmedAt;
+  const journeyDone = [reflectionCount >= 6, goalsComplete, submitted, conversationDone].filter(Boolean).length;
 
   function stateFor(item: NavItemDef): 'active' | 'done' | 'locked' | '' {
     if (item.label === 'Reflect') return reflectionCount >= 6 ? 'done' : '';
@@ -54,15 +55,19 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
   return (
     <nav className="sidebar visible">
       <div className="sidebar-label">Workspace</div>
-      <NavLink to="/home" className={({ isActive }) => `snav-item snav-dashboard${isActive ? ' active' : ''}`}>
-        <div className="snav-dot">&#9638;</div>
-        Dashboard
-      </NavLink>
       <NavLink to="/" className="snav-item" style={{ color: 'var(--muted)' }}>
         <div className="snav-dot" style={{ background: 'var(--cream-d)', color: 'var(--muted)' }}>&#8505;</div>
         Philosophy &amp; Overview
       </NavLink>
+      <NavLink to="/home" className={({ isActive }) => `snav-item snav-dashboard${isActive ? ' active' : ''}`}>
+        <div className="snav-dot">&#9638;</div>
+        Dashboard
+      </NavLink>
       <div className="sidebar-label sidebar-section-label">My Journey</div>
+      <div className="sidebar-progress" aria-label={`${journeyDone} of 4 journey stages complete`}>
+        <span><i style={{ width: `${journeyDone * 25}%` }} /></span>
+        <small>{journeyDone} of 4 complete</small>
+      </div>
       {steps.map((item) => {
         const s = stateFor(item);
         const locked = s === 'locked';

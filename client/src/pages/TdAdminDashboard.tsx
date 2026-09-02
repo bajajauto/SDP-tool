@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { TrackingRow } from '@sdp/shared';
-import { api } from '../lib/api';
+import { api, ApiError } from '../lib/api';
 import { TrackingTable } from '../components/TrackingTable';
 
 /**
@@ -11,9 +11,17 @@ import { TrackingTable } from '../components/TrackingTable';
 export function TdAdminDashboard() {
   const [rows, setRows] = useState<TrackingRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.hr.tracking().then((data) => { setRows(data); setLoading(false); });
+    setLoading(true);
+    setError(null);
+    api.hr.tracking().then((data) => { setRows(data); setLoading(false); }).catch((err) => {
+      setError(err instanceof ApiError && err.status === 403
+        ? "Your account isn't granted TD Admin access."
+        : 'Could not load the org-wide dashboard. Please try again.');
+      setLoading(false);
+    });
   }, []);
 
   const submitted = rows.filter((r) => r.sharingScope !== null).length;
@@ -38,7 +46,9 @@ export function TdAdminDashboard() {
         </div>
       </div>
 
-      {loading ? <p style={{ color: 'var(--muted)' }}>Loading...</p> : <TrackingTable rows={rows} showBu />}
+      {loading && <p style={{ color: 'var(--muted)' }}>Loading...</p>}
+      {!loading && error && <div className="placeholder-card" role="alert"><p>{error}</p></div>}
+      {!loading && !error && <TrackingTable rows={rows} showBu />}
 
       <div className="placeholder-card">
         Cycle configuration, email templates, audit log, and bulk announcements are not built yet.

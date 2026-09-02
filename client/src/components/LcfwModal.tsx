@@ -6,7 +6,7 @@ const tints = ['#EBF2FA', '#DBE7F6', '#C5D5F0', '#A6BFE5'];
 export function LcfwModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Modal open={open} onClose={onClose} maxWidth={600}>
-      <h2 style={{ fontSize: 24, marginBottom: 6, color: 'var(--ink)' }}>The LCFW Framework</h2>
+      <h2 style={{ fontSize: 24, marginBottom: 6, color: 'var(--ink)' }}>The Leadership Competency Framework</h2>
       <p style={{ fontSize: 14, color: 'var(--mid)', marginBottom: 24, lineHeight: 1.6 }}>
         These four attributes are the lens through which Bajaj Auto thinks about leadership and
         growth. They are not boxes to tick, they are a way of thinking about who you want to become.

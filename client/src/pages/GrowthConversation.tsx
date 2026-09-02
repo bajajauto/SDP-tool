@@ -7,6 +7,17 @@ export function GrowthConversation() {
   const { state, toggleChecklistItem, resetChecklist, confirmConversation } = useSdp();
   const [convDone, setConvDone] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setConfirmError(null);
+    try {
+      await confirmConversation();
+      setConfirming(false);
+    } catch {
+      setConfirmError('Could not confirm the conversation. Please check your connection and try again.');
+    }
+  }
   const items = growthChecklist.flatMap((section) => section.items);
   const doneCount = items.filter((item) => state.checklist[item.id]).length;
   const checklistComplete = doneCount === items.length;
@@ -48,7 +59,8 @@ export function GrowthConversation() {
       <button className="modal-close" onClick={() => setConfirming(false)}>&#10005;</button>
       <h2 style={{ fontSize: 22, marginBottom: 10 }}>Have you had your growth conversation with your manager?</h2>
       <p style={{ fontSize: 13.5, color: 'var(--mid)', marginBottom: 20, lineHeight: 1.65 }}>This action is not reversible. It unlocks manager feedback and notifies your manager.</p>
-      <div style={{ display: 'flex', gap: 10 }}><button className="btn btn-secondary" onClick={() => setConfirming(false)} style={{ flex: 1, justifyContent: 'center' }}>Not yet</button><button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { confirmConversation(); setConfirming(false); }}>Yes, confirm</button></div>
+      {confirmError && <div className="conversation-gate-note" role="alert" style={{ marginBottom: 12 }}>{confirmError}</div>}
+      <div style={{ display: 'flex', gap: 10 }}><button className="btn btn-secondary" onClick={() => setConfirming(false)} style={{ flex: 1, justifyContent: 'center' }}>Not yet</button><button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={handleConfirm}>Yes, confirm</button></div>
     </div></div>}
   </div>;
 }

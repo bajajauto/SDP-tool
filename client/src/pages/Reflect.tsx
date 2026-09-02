@@ -10,7 +10,7 @@ import { q1WordChips, primingPrompts } from '../content/reflection';
 const MIN_LEN = 80;
 
 export function Reflect() {
-  const { state, updateReflection, lastSavedAt } = useSdp();
+  const { state, updateReflection, lastSavedAt, saveStatus } = useSdp();
   const navigate = useNavigate();
   const [lcfwOpen, setLcfwOpen] = useState(false);
   const [guideQ, setGuideQ] = useState<number | null>(null);
@@ -114,7 +114,7 @@ export function Reflect() {
       {section === 'will' && <><div style={{ marginBottom: 28 }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <button onClick={() => setLcfwOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--blue-xl)', border: '1px solid var(--blue-l)', color: 'var(--blue)', fontSize: 12, padding: '5px 11px', borderRadius: 20, cursor: 'pointer', fontWeight: 500 }}>
-            LCFW Overview
+            Leadership Competency Framework Overview
           </button>
         </div>
         <h1 className="page-title" style={{ fontSize: 28 }}>Who I am and what drives me</h1>
@@ -194,7 +194,7 @@ export function Reflect() {
 
       <div className="nav-row">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <SaveIndicator lastSavedAt={lastSavedAt} />
+          <SaveIndicator lastSavedAt={lastSavedAt} saveStatus={saveStatus} />
           <button className="btn btn-primary" onClick={handleSectionContinue}>Continue &rarr;</button>
         </div>
       </div>
@@ -227,7 +227,7 @@ export function Reflect() {
         <div className="nav-row">
           <button className="btn btn-ghost" onClick={() => { setSection('will'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>&larr; Back</button>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <SaveIndicator lastSavedAt={lastSavedAt} />
+            <SaveIndicator lastSavedAt={lastSavedAt} saveStatus={saveStatus} />
             <button className="btn btn-primary" onClick={handleContinue}>Continue to your future vision &rarr;</button>
           </div>
         </div>

@@ -1,191 +1,112 @@
-import type {
-  Employee, Goal, JournalEntry, Me, Milestone, Reflection, Role, SharingScope, TrackingRow,
-} from '@sdp/shared';
-import { MILESTONE_ORDER } from '@sdp/shared';
+import type { Goal, GoalDomain, JournalEntry, Me, Reflection, Sdp, SharingScope, TrackingRow } from '@sdp/shared';
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
+const DEFAULT_DEV_EMPLOYEE_ID = (import.meta.env.VITE_DEV_EMPLOYEE_ID as string | undefined) ?? 'E0001';
 
 /**
- * Frontend-only mock data layer. There is no backend running yet (see
- * server/, kept on disk for when that work resumes). Every function here
- * has the same shape the real `/api/*` routes will have, so swapping this
- * module for real `fetch` calls later should not require touching any page.
- *
- * All roles are granted to the mock user so every screen (Employee,
- * Manager, BUHR) is reachable without a login/role switcher. Real role
- * derivation from EC mapping (FR-EC-004) replaces this once the backend
- * is back.
+ * Dev-mode identity is switchable at runtime (per FR-SYS-010's stub: the
+ * server trusts whatever `x-employee-id` we send). This is what lets the
+ * four login demo profiles actually authenticate as different seeded
+ * employees, instead of every role hitting the API as the same person.
+ * Real SSO replaces all of this with a server-side session cookie.
  */
+const DEV_IDENTITY_KEY = 'sdp_dev_employee_id_v1';
 
-const mockEmployee: Employee = {
-  employeeId: 'E001',
-  fullName: 'Asha Rao',
-  email: 'asha.rao@bajajauto.co.in',
-  managerEmployeeId: 'E010',
-  buhrEmployeeId: 'E020',
-  bu: 'Operations',
-  function: 'Manufacturing',
-  department: 'Plant 3',
-  designation: 'Senior Engineer',
-  buHeadEmployeeId: 'E030',
-  hireDate: '2019-06-01',
-  isActive: true,
-};
-
-const mockRoles: Role[] = ['EMPLOYEE', 'MANAGER', 'BUHR'];
-
-function delay<T>(value: T, ms = 150): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
-}
-
-// ---- Journal (localStorage backed, mimics server-side per-employee isolation) ----
-const JOURNAL_KEY = 'sdp_mock_journal_v1';
-
-function loadJournal(): JournalEntry[] {
+export function getDevEmployeeId(): string {
   try {
-    return JSON.parse(localStorage.getItem(JOURNAL_KEY) ?? '[]');
+    return localStorage.getItem(DEV_IDENTITY_KEY) || DEFAULT_DEV_EMPLOYEE_ID;
   } catch {
-    return [];
+    return DEFAULT_DEV_EMPLOYEE_ID;
   }
 }
 
-function saveJournal(entries: JournalEntry[]) {
-  localStorage.setItem(JOURNAL_KEY, JSON.stringify(entries));
+export function setDevEmployeeId(employeeId: string) {
+  try {
+    localStorage.setItem(DEV_IDENTITY_KEY, employeeId);
+  } catch {
+    // ignore, falls back to the default on next read
+  }
 }
 
-// ---- Team / reportees mock data ----
-export interface TeamReportee {
-  employeeId: string;
-  fullName: string;
-  designation: string;
-  sharingScope: SharingScope | null;
-  submittedAt: string | null;
+export function clearDevEmployeeId() {
+  try {
+    localStorage.removeItem(DEV_IDENTITY_KEY);
+  } catch {
+    // ignore
+  }
 }
 
-export interface ReporteeDetail {
-  employeeId: string;
-  employeeName: string;
-  sharingScope: SharingScope | null;
-  submittedAt: string | null;
-  goals: Goal[];
-  reflection?: Reflection;
+/** Real seeded employees (server/prisma/seed.ts) the four demo login cards map to. */
+export const DEMO_IDENTITIES = {
+  employee: 'E0001',
+  manager: 'M001',
+  buhr: 'HR001',
+  tdadmin: 'ADMIN001',
+} as const;
+
+export class ApiError extends Error {
+  constructor(public status: number, public code: string, message: string, public details?: unknown) { super(message); }
 }
 
-const mockGoal: Goal = {
-  goalId: 'G100',
-  sortOrder: 1,
-  title: 'Improve incident response coordination across shifts',
-  domain: 'LEADERSHIP',
-  whyItMatters: 'We lose time and information at every shift change when an incident is open.',
-  grownWhen: 'A live incident handed over from one shift to the next is picked up without repeating diagnosis.',
-  actionPlan: {
-    do: 'Build a one-page incident handover format with the supervisors of both shifts.',
-    learn: 'Look at how the maintenance group runs incident bridges across geographies.',
-    connect: 'Run a working session with the four shift leads.',
-  },
-  supportNeeded: 'Visible backing from my manager when I ask shift leads for time.',
-};
-
-const mockReportees: (TeamReportee & { reflection?: Reflection; goals: Goal[] })[] = [
-  {
-    employeeId: 'E002',
-    fullName: 'Rohan Mehta',
-    designation: 'Senior Production Engineer',
-    sharingScope: 'FULL',
-    submittedAt: '2026-04-18T00:00:00.000Z',
-    goals: [mockGoal],
-    reflection: {
-      q1Words: ['Curious', 'Methodical'],
-      q1Text: null,
-      q2Text: 'Reliability under pressure, calm in escalations, and finishing what I start.',
-      q3Text: 'Root-causing problems on the line, and mentoring younger operators.',
-      q4Text: 'Led the Q3 retrofit with zero unplanned downtime.',
-      q5Text: 'I sat on a safety audit concern for almost two weeks because I wanted to be completely sure.',
-      q6Text: 'The engineer who can take a new line from concept to steady state.',
-    },
-  },
-  {
-    employeeId: 'E003',
-    fullName: 'Arjun Patel',
-    designation: 'Plant Operations Lead',
-    sharingScope: 'GOALS_ONLY',
-    submittedAt: '2026-03-30T00:00:00.000Z',
-    goals: [{ ...mockGoal, goalId: 'G101', title: 'Develop a sharper read on equipment fatigue patterns', domain: 'FUNCTIONAL' }],
-  },
-];
-
-// ---- BUHR tracking mock data ----
-function buildTrackingRow(employeeName: string, managerName: string, department: string, doneThrough: number): TrackingRow {
-  const milestones = {} as TrackingRow['milestones'];
-  MILESTONE_ORDER.forEach((m: Milestone, i: number) => {
-    milestones[m] = {
-      state: i < doneThrough ? 'DONE' : i === doneThrough ? 'PENDING' : 'NOT_DUE',
-      completedAt: i < doneThrough ? '2026-05-0' + (i + 1) + 'T00:00:00.000Z' : null,
-    };
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: { 'content-type': 'application/json', 'x-employee-id': getDevEmployeeId(), ...init?.headers },
   });
-  return {
-    employeeId: employeeName.replace(/\s/g, '').toUpperCase(),
-    employeeName,
-    managerName,
-    bu: 'Operations',
-    department,
-    sharingScope: doneThrough > 0 ? 'FULL' : null,
-    milestones,
-  };
+  if (response.status === 204) return undefined as T;
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new ApiError(response.status, payload?.error?.code ?? 'REQUEST_FAILED', payload?.error?.message ?? 'Request failed', payload?.error?.details);
+  return payload as T;
 }
 
-const mockTracking: TrackingRow[] = [
-  buildTrackingRow('Rohan Mehta', 'Vikram Singh', 'Production', 3),
-  buildTrackingRow('Arjun Patel', 'Vikram Singh', 'Operations', 5),
-  buildTrackingRow('Meera Iyer', 'Vikram Singh', 'Quality', 7),
-  buildTrackingRow('Priya Sharma', 'Vikram Singh', 'Maintenance', 0),
-];
+export interface TeamReportee { employeeId: string; fullName: string; designation: string; sharingScope: SharingScope | null; submittedAt: string | null; }
+export interface ReporteeDetail { employeeId: string; employeeName: string; sharingScope: SharingScope | null; submittedAt: string | null; goals: Goal[]; reflection?: Reflection; }
+
+/**
+ * POST/PATCH /sdp/goals echo the raw Prisma row (flat actionDo/actionLearn/
+ * actionConnect columns), not the nested `actionPlan` shape the rest of the
+ * API uses. SdpContext maps between the two; this is the wire shape.
+ */
+export interface RawGoal {
+  goalId: string;
+  sortOrder: number;
+  title: string;
+  domain: GoalDomain;
+  whyItMatters: string;
+  grownWhen: string;
+  actionDo: string;
+  actionLearn: string;
+  actionConnect: string;
+  supportNeeded: string;
+}
+
+export interface GoalPatchBody {
+  title?: string;
+  domain?: GoalDomain;
+  whyItMatters?: string;
+  grownWhen?: string;
+  actionPlan?: { do?: string; learn?: string; connect?: string };
+  supportNeeded?: string;
+}
 
 export const api = {
-  me: () => delay<Me>({
-    employee: mockEmployee,
-    roles: mockRoles,
-    cycle: { cycleId: 'C2026-27', label: '2026-27', status: 'ACTIVE' },
-    sdpStatus: 'SUBMITTED',
-  }),
+  me: () => request<Me>('/me'),
+  sdp: {
+    get: () => request<Sdp>('/sdp'),
+    patchReflection: (body: Partial<Reflection>) => request<Sdp>('/sdp/reflection', { method: 'PATCH', body: JSON.stringify(body) }),
+    createGoal: (body: GoalPatchBody) => request<RawGoal>('/sdp/goals', { method: 'POST', body: JSON.stringify(body) }),
+    patchGoal: (goalId: string, body: GoalPatchBody) => request<RawGoal>(`/sdp/goals/${goalId}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    removeGoal: (goalId: string) => request<void>(`/sdp/goals/${goalId}`, { method: 'DELETE' }),
+    submit: (sharingScope: SharingScope) => request<Sdp>('/sdp/submit', { method: 'POST', body: JSON.stringify({ sharingScope }) }),
+    confirmConversation: () => request<Sdp>('/sdp/confirm-conversation', { method: 'POST' }),
+  },
   journal: {
-    list: () => delay([...loadJournal()].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())),
-    create: (body: string) => {
-      const now = new Date().toISOString();
-      const entry: JournalEntry = { entryId: crypto.randomUUID(), body, createdAt: now, updatedAt: now };
-      const entries = [...loadJournal(), entry];
-      saveJournal(entries);
-      return delay(entry);
-    },
-    update: (entryId: string, body: string) => {
-      const entries = loadJournal();
-      const entry = entries.find((e) => e.entryId === entryId);
-      if (entry) {
-        entry.body = body;
-        entry.updatedAt = new Date().toISOString();
-        saveJournal(entries);
-      }
-      return delay(entry as JournalEntry);
-    },
-    remove: (entryId: string) => {
-      saveJournal(loadJournal().filter((e) => e.entryId !== entryId));
-      return delay(undefined);
-    },
+    list: () => request<JournalEntry[]>('/journal'),
+    create: (body: string) => request<JournalEntry>('/journal', { method: 'POST', body: JSON.stringify({ body }) }),
+    update: (entryId: string, body: string) => request<JournalEntry>(`/journal/${entryId}`, { method: 'PATCH', body: JSON.stringify({ body }) }),
+    remove: (entryId: string) => request<void>(`/journal/${entryId}`, { method: 'DELETE' }),
   },
-  team: {
-    list: () => delay<TeamReportee[]>(mockReportees.map(({ employeeId, fullName, designation, sharingScope, submittedAt }) => ({ employeeId, fullName, designation, sharingScope, submittedAt }))),
-    detail: (employeeId: string) => {
-      const r = mockReportees.find((x) => x.employeeId === employeeId);
-      if (!r) return Promise.reject(new Error('NOT_FOUND'));
-      const base: ReporteeDetail = {
-        employeeId: r.employeeId,
-        employeeName: r.fullName,
-        sharingScope: r.sharingScope,
-        submittedAt: r.submittedAt,
-        goals: r.goals,
-      };
-      return delay(r.sharingScope === 'FULL' ? { ...base, reflection: r.reflection } : base);
-    },
-  },
-  hr: {
-    tracking: () => delay<TrackingRow[]>(mockTracking),
-  },
+  team: { list: () => request<TeamReportee[]>('/team'), detail: (employeeId: string) => request<ReporteeDetail>(`/team/${employeeId}`) },
+  hr: { tracking: async () => (await request<{ data: TrackingRow[] }>('/hr/tracking')).data },
 };
