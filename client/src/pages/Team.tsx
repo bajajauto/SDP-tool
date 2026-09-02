@@ -4,6 +4,7 @@ import { api, ApiError, type TeamReportee } from '../lib/api';
 
 export function Team() {
   const [reportees, setReportees] = useState<TeamReportee[]>([]);
+  const [activeTab, setActiveTab] = useState<'submitted' | 'awaiting'>('submitted');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,6 +18,10 @@ export function Team() {
       setLoading(false);
     });
   }, []);
+
+  const submittedCount = reportees.filter((reportee) => reportee.submittedAt).length;
+  const awaitingCount = reportees.length - submittedCount;
+  const visibleReportees = reportees.filter((reportee) => activeTab === 'submitted' ? !!reportee.submittedAt : !reportee.submittedAt);
 
   return (
     <div className="screen-inner wide">
@@ -37,8 +42,17 @@ export function Team() {
         </div>
       )}
 
+      {!loading && !error && reportees.length > 0 && <div className="team-tabs" role="tablist" aria-label="Filter development plans by status">
+        <button type="button" role="tab" aria-selected={activeTab === 'submitted'} className={activeTab === 'submitted' ? 'active submitted' : ''} onClick={() => setActiveTab('submitted')}>
+          Submitted <span>{submittedCount}</span>
+        </button>
+        <button type="button" role="tab" aria-selected={activeTab === 'awaiting'} className={activeTab === 'awaiting' ? 'active awaiting' : ''} onClick={() => setActiveTab('awaiting')}>
+          Awaiting submission <span>{awaitingCount}</span>
+        </button>
+      </div>}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18 }}>
-        {reportees.map((r) => (
+        {visibleReportees.map((r) => (
           <Link to={`/team/${r.employeeId}`} className="team-card" key={r.employeeId} style={{ textDecoration: 'none', color: 'inherit' }}>
             <div style={{ display: 'flex', gap: 14 }}>
               <div className="team-avatar">{initials(r.fullName)}</div>
@@ -49,7 +63,7 @@ export function Team() {
             </div>
             <div>
               <span className={`team-status ${r.submittedAt ? 'active' : 'pending'}`}>
-                {r.submittedAt ? 'Submitted' : 'Not submitted'}
+                {r.submittedAt ? 'Submitted' : 'Awaiting'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--cream-border)' }}>
@@ -61,6 +75,7 @@ export function Team() {
           </Link>
         ))}
       </div>
+      {!loading && !error && reportees.length > 0 && visibleReportees.length === 0 && <div className="placeholder-card"><p>No {activeTab === 'submitted' ? 'submitted' : 'awaiting'} development plans.</p></div>}
     </div>
   );
 }
