@@ -98,6 +98,16 @@ model Employee {
   function             String
   department           String
   designation          String
+  jobLevel             String?           @map("job_level")
+  positionLevel        String?           @map("position_level")
+  company              String?
+  sector               String?
+  baseLocation         String?           @map("base_location")
+  circle               String?
+  ro                   String?
+  hub                  String?
+  gender               String?
+  topPotential         Boolean?          @map("top_potential")
   buHeadEmployeeId     String?           @map("bu_head_employee_id")
   hireDate             DateTime          @map("hire_date") @db.Date
   isActive             Boolean           @default(true) @map("is_active")
@@ -107,6 +117,8 @@ model Employee {
   reportees            Employee[]        @relation("ManagerReports")
   buhr                 Employee?         @relation("BuhrEmployees", fields: [buhrEmployeeId], references: [employeeId], onDelete: SetNull)
   buhrEmployees        Employee[]        @relation("BuhrEmployees")
+  buHead               Employee?         @relation("BuHeadEmployees", fields: [buHeadEmployeeId], references: [employeeId], onDelete: SetNull)
+  buHeadEmployees      Employee[]        @relation("BuHeadEmployees")
   sdps                 Sdp[]
   journalEntries       JournalEntry[]
   roleGrants           RoleGrant[]
@@ -117,6 +129,7 @@ model Employee {
 
   @@index([managerEmployeeId])
   @@index([buhrEmployeeId, bu])
+  @@index([buHeadEmployeeId])
   @@index([isActive, bu, department])
   @@map("employees")
 }

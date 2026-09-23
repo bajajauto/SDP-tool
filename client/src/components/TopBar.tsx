@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowRight, Building2, UserRound } from 'lucide-react';
 import { copy } from '../content/copy';
 import type { Me } from '@sdp/shared';
 import type { ViewRole } from '../pages/Login';
@@ -27,6 +28,8 @@ const viewOptions: { role: ViewRole; icon: string; sub: string }[] = [
 
 export function TopBar({ me, view, onSwitchView, onSignOut }: TopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const hasBuhrWorkspace = me?.roles.includes('BUHR') ?? view === 'buhr';
+  const inBuhrWorkspace = view === 'buhr';
 
   return (
     <header className="topbar">
@@ -37,7 +40,18 @@ export function TopBar({ me, view, onSwitchView, onSignOut }: TopBarProps) {
         <div className="tb-sep" />
         <div className="tb-label">{copy.appTitle}</div>
       </div>
+      {hasBuhrWorkspace && (
+        <div className="tb-workspace-context">
+          <span className="tb-workspace-icon" aria-hidden="true">{inBuhrWorkspace ? <Building2 size={16} /> : <UserRound size={16} />}</span>
+          <strong>{inBuhrWorkspace ? 'Continue your own development journey' : 'Track employees in your business unit'}</strong>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative' }}>
+        {hasBuhrWorkspace ? (
+          <button className="tb-workspace-switch" type="button" onClick={() => onSwitchView(inBuhrWorkspace ? 'employee' : 'buhr')}>
+            {inBuhrWorkspace ? 'Switch to My SDP' : 'Switch to BUHR view'} <ArrowRight size={15} />
+          </button>
+        ) : <>
         <button
           onClick={() => setMenuOpen((o) => !o)}
           style={{
@@ -50,6 +64,7 @@ export function TopBar({ me, view, onSwitchView, onSignOut }: TopBarProps) {
           <span>{viewLabels[view]}</span>
           <span style={{ fontSize: 9, opacity: 0.7 }}>&#9660;</span>
         </button>
+        </>}
         <div className="tb-user">
           {me && (
             <>
@@ -58,7 +73,7 @@ export function TopBar({ me, view, onSwitchView, onSignOut }: TopBarProps) {
             </>
           )}
         </div>
-        {menuOpen && (
+        {!hasBuhrWorkspace && menuOpen && (
           <div className="user-dropdown open" style={{ top: 44 }}>
             <div className="ud-header">Switch view</div>
             {viewOptions.map((opt) => (

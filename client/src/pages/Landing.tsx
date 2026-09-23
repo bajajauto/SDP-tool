@@ -37,15 +37,12 @@ export function Landing() {
 
   return (
     <div>
-      <div style={{ background: 'var(--blue-d)', padding: '32px 0 30px' }}>
+      <div style={{ background: 'var(--blue-d)', padding: '20px 0 18px' }}>
         <div style={{ maxWidth: 780, margin: '0 auto', padding: '0 40px', textAlign: 'center' }}>
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', marginBottom: 9 }}>
-            Bajaj Auto &middot; 2026-27
-          </div>
-          <h1 style={{ fontFamily: 'var(--serif)', fontSize: 38, fontWeight: 400, color: '#fff', lineHeight: 1.12, marginBottom: 11 }}>
+          <h1 style={{ fontFamily: 'var(--serif)', fontSize: 34, fontWeight: 400, color: '#fff', lineHeight: 1.1, marginBottom: 8 }}>
             Your Self Development Plan
           </h1>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,.72)', lineHeight: 1.6, maxWidth: 640, margin: '0 auto 20px' }}>
+          <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,.72)', lineHeight: 1.5, maxWidth: 640, margin: '0 auto 14px' }}>
             {copy.landing.heroSubtext}
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', maxWidth: 680, margin: '0 auto' }}>
@@ -56,7 +53,7 @@ export function Landing() {
             ].map((text, i) => (
               <div key={i} style={{ flex: 1, minWidth: 180, padding: '0 14px', borderRight: i < 2 ? '1px solid rgba(255,255,255,.12)' : undefined }}>
                 <div style={{ fontFamily: 'var(--serif)', fontSize: 18, color: '#fff', marginBottom: 2 }}>0{i + 1}</div>
-                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.65)', lineHeight: 1.45 }}>{text}</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,.72)', lineHeight: 1.4 }}>{text}</div>
               </div>
             ))}
           </div>
@@ -66,13 +63,13 @@ export function Landing() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--cream)', padding: '52px 0', borderBottom: '1px solid var(--cream-border)' }}>
+      <div style={{ background: 'var(--cream)', padding: '26px 0', borderBottom: '1px solid var(--cream-border)' }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 40px' }}>
-          <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ textAlign: 'center', marginBottom: 18 }}>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>
               Your reflection journey
             </div>
-            <h2 style={{ fontSize: 24, fontWeight: 500 }}>Four chapters of self-discovery</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 500 }}>Four chapters of self-discovery</h2>
           </div>
           <div style={{ display: 'flex', gap: 0, maxWidth: 920, margin: '0 auto' }}>
             {[
@@ -82,7 +79,7 @@ export function Landing() {
               { tint: '#A6BFE5', border: '#95ADD5', name: 'Who I want to become', sub: 'Future professional' },
             ].map((c, i) => (
               <div key={c.name} style={{ display: 'flex', alignItems: 'center', flex: i < 3 ? undefined : 1 }}>
-                <div style={{ flex: 1, background: c.tint, border: `1px solid ${c.border}`, borderRadius: 'var(--r)', padding: '18px 14px', textAlign: 'center', minHeight: 90 }}>
+                <div style={{ flex: 1, background: c.tint, border: `1px solid ${c.border}`, borderRadius: 'var(--r)', padding: '12px 12px', textAlign: 'center', minHeight: 72 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#1E5FBA', textTransform: 'uppercase', marginBottom: 6 }}>Chapter {i + 1}</div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 3 }}>{c.name}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--mid)' }}>{c.sub}</div>

@@ -3,6 +3,7 @@ import type { Role } from '@sdp/shared';
 import { config } from '../config';
 import { prisma } from '../lib/db';
 import { asyncRoute } from '../lib/errors';
+import { corporateEmailWhere, isBajajAutoEmail } from '../lib/corporateEmail';
 
 export interface AuthedRequest extends Request {
   employeeId: string;
@@ -24,11 +25,16 @@ export const attachIdentity = asyncRoute(async (req: Request, res: Response, nex
   const employeeId = (requestedId || config.DEV_EMPLOYEE_ID).trim();
   const employee = await prisma.employee.findFirst({
     where: { employeeId, isActive: true },
-    include: { roleGrants: true, reportees: { where: { isActive: true }, select: { employeeId: true }, take: 1 }, buhrEmployees: { where: { isActive: true }, select: { employeeId: true }, take: 1 } },
+    include: { roleGrants: true, reportees: { where: { isActive: true, email: corporateEmailWhere }, select: { employeeId: true }, take: 1 }, buhrEmployees: { where: { isActive: true, email: corporateEmailWhere }, select: { employeeId: true }, take: 1 } },
   });
 
   if (!employee) {
     res.status(403).json({ error: 'NO_ACTIVE_EC_RECORD' });
+    return;
+  }
+
+  if (!isBajajAutoEmail(employee.email)) {
+    res.status(403).json({ error: { code: 'CORPORATE_EMAIL_REQUIRED', message: 'Access is limited to active Bajaj Auto employees using a bajajauto.co.in email address' } });
     return;
   }
 

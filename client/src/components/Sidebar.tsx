@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import type { Role } from '@sdp/shared';
 import { useSdp } from '../state/SdpContext';
+import dashboardIcon from '../assets/dashboard.webp';
 
 interface NavItemDef {
   to: string;
@@ -18,7 +19,7 @@ const steps: NavItemDef[] = [
   { to: '/dashboard', label: 'Track Progress', dot: '↗' },
 ];
 
-export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => void }) {
+export function Sidebar({ roles, onSignOut, hideJourney = false, hideSupport = false }: { roles: Role[]; onSignOut: () => void; hideJourney?: boolean; hideSupport?: boolean }) {
   const { state } = useSdp();
 
   const reflectionCount = [
@@ -53,16 +54,17 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
   }
 
   return (
-    <nav className="sidebar visible">
+    <nav className="sidebar visible" aria-label="Main navigation">
       <div className="sidebar-label">Workspace</div>
       <NavLink to="/" className="snav-item" style={{ color: 'var(--muted)' }}>
         <div className="snav-dot" style={{ background: 'var(--cream-d)', color: 'var(--muted)' }}>&#8505;</div>
         Philosophy &amp; Overview
       </NavLink>
       <NavLink to="/home" className={({ isActive }) => `snav-item snav-dashboard${isActive ? ' active' : ''}`}>
-        <div className="snav-dot">&#9638;</div>
+        <div className="snav-dot"><img className="snav-dashboard-icon" src={dashboardIcon} alt="" aria-hidden="true" /></div>
         Dashboard
       </NavLink>
+      {!hideJourney && <>
       <div className="sidebar-label sidebar-section-label">My Journey</div>
       <div className="sidebar-progress" aria-label={`${journeyDone} of 4 journey stages complete`}>
         <span><i style={{ width: `${journeyDone * 25}%` }} /></span>
@@ -83,6 +85,8 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
           </NavLink>
         );
       })}
+      </>}
+      {!hideSupport && <>
       <div className="sidebar-label sidebar-section-label">People &amp; Support</div>
       {roles.includes('MANAGER') && (
         <NavLink to="/team" className="snav-item" style={{ color: 'var(--muted)' }}>
@@ -94,6 +98,7 @@ export function Sidebar({ roles, onSignOut }: { roles: Role[]; onSignOut: () => 
         <div className="snav-dot" style={{ background: 'var(--cream-d)', color: 'var(--muted)' }}>&#128218;</div>
         Support Toolkit
       </NavLink>
+      </>}
       <button type="button" className="sidebar-signout" onClick={onSignOut}>
         <span aria-hidden="true">&#8592;</span>
         Sign out

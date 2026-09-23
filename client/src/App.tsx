@@ -3,6 +3,7 @@ import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import type { Me } from '@sdp/shared';
 import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
+import { BuhrSidebar } from './components/BuhrSidebar';
 import { JournalFab } from './components/JournalFab';
 import { AccessPending } from './pages/AccessPending';
 import { Login, type ViewRole } from './pages/Login';
@@ -27,40 +28,37 @@ import { SdpProvider } from './state/SdpContext';
 import { api, clearDevEmployeeId, DEMO_IDENTITIES, setDevEmployeeId } from './lib/api';
 
 const SESSION_VIEW_KEY = 'sdp_authenticated_view_v1';
-const validViews: ViewRole[] = ['employee', 'manager', 'buhr', 'tdadmin'];
 
-function loadSavedView(): ViewRole | null {
+function restoreSessionView(): ViewRole | null {
   try {
-    const savedView = localStorage.getItem(SESSION_VIEW_KEY);
-    return validViews.includes(savedView as ViewRole) ? savedView as ViewRole : null;
+    const role = sessionStorage.getItem(SESSION_VIEW_KEY);
+    if (role === 'employee' || role === 'manager' || role === 'buhr' || role === 'tdadmin') {
+      return role;
+    }
   } catch {
-    return null;
+    // Login still works when browser storage is unavailable.
   }
+  return null;
 }
 
 export default function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
-  // The identity must be resolved synchronously, in the same tick as
-  // restoring/setting `view` - not in a reactive effect. Effects for a
-  // newly-mounted tree run children-first, so any child that fetches on
-  // mount (Team, HrDashboard...) would otherwise race ahead of an
-  // App-level effect and fire its first request under the previous
-  // (or default) identity. Resolving it inside the state initializer, and
-  // again synchronously inside handleSelectView before setView(), closes
-  // that race for both the "restored session" and "just logged in" paths.
-  const [view, setView] = useState<ViewRole | null>(() => {
-    const restored = loadSavedView();
-    if (restored) setDevEmployeeId(DEMO_IDENTITIES[restored]);
-    return restored;
-  });
+  // Keep login across refreshes within this tab, without a permanent saved role.
+  const [view, setView] = useState<ViewRole | null>(restoreSessionView);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (!view) return;
+    let active = true;
     setAccessDenied(false);
-    api.me().then(setMe).catch(() => setAccessDenied(true));
+    api.me().then((profile) => {
+      if (active) setMe(profile);
+    }).catch(() => {
+      if (active) setAccessDenied(true);
+    });
+    return () => { active = false; };
   }, [view]);
 
   useEffect(() => {
@@ -68,23 +66,57 @@ export default function App() {
     document.querySelector('.app-main')?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (view === 'buhr' && !location.pathname.startsWith('/buhr/')) navigate('/buhr/tracking', { replace: true });
+  }, [location.pathname, navigate, view]);
+
   if (accessDenied) {
     return <AccessPending />;
   }
 
   function handleSelectView(role: ViewRole) {
+    // Set identity before mounting children that fetch account data.
     setDevEmployeeId(DEMO_IDENTITIES[role]);
-    localStorage.setItem(SESSION_VIEW_KEY, role);
+    try {
+      sessionStorage.setItem(SESSION_VIEW_KEY, role);
+    } catch {
+      // Continue with an in-memory session if storage is unavailable.
+    }
+    if (role !== view) setMe(null);
+    setAccessDenied(false);
     setView(role);
     if (role === 'employee') navigate('/');
     if (role === 'manager') navigate('/home');
+    if (role === 'buhr') navigate('/buhr/tracking');
+  }
+
+  function handleSwitchView(role: ViewRole) {
+    const requiredRole = role === 'manager' ? 'MANAGER' : role === 'buhr' ? 'BUHR' : role === 'tdadmin' ? 'TD_ADMIN' : 'EMPLOYEE';
+    const switchingWithinOwnAccount = me?.roles.includes(requiredRole);
+    if (!switchingWithinOwnAccount) {
+      setDevEmployeeId(DEMO_IDENTITIES[role]);
+      setMe(null);
+    }
+    try {
+      sessionStorage.setItem(SESSION_VIEW_KEY, role);
+    } catch {
+      // Continue with the active in-memory view if storage is unavailable.
+    }
+    setAccessDenied(false);
+    setView(role);
+    navigate(role === 'employee' ? '/' : role === 'manager' ? '/home' : role === 'buhr' ? '/buhr/tracking' : '/');
   }
 
   function handleSignOut() {
-    localStorage.removeItem(SESSION_VIEW_KEY);
+    try {
+      sessionStorage.removeItem(SESSION_VIEW_KEY);
+    } catch {
+      // Always clear the active in-memory session.
+    }
     clearDevEmployeeId();
     setView(null);
     setMe(null);
+    setAccessDenied(false);
     navigate('/');
   }
 
@@ -102,11 +134,11 @@ export default function App() {
     // whichever identity's reflection/goals happened to load first.
     <SdpProvider key={view}>
       <div className="app-shell">
-        <TopBar me={me} view={view} onSwitchView={handleSelectView} onSignOut={handleSignOut} />
+        <TopBar me={me} view={view} onSwitchView={handleSwitchView} onSignOut={handleSignOut} />
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-          <Sidebar roles={me?.roles ?? []} onSignOut={handleSignOut} />
+          {view === 'buhr' ? <BuhrSidebar onSignOut={handleSignOut} /> : <Sidebar roles={me?.roles ?? []} onSignOut={handleSignOut} hideJourney={view === 'tdadmin'} hideSupport={view === 'tdadmin'} />}
           {view === 'buhr' ? (
-            <main className="app-main" style={{ flex: 1, minWidth: 0 }}><HrDashboard /></main>
+            <main className="app-main" style={{ flex: 1, minWidth: 0 }}><HrDashboard exportsOnly={location.pathname === '/buhr/exports'} /></main>
           ) : view === 'tdadmin' ? (
             <main className="app-main" style={{ flex: 1, minWidth: 0 }}><TdAdminDashboard /></main>
           ) : (

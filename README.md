@@ -10,8 +10,9 @@ Prerequisites: Node.js 22 or newer and PostgreSQL 17. PostgreSQL is installed lo
 2. Install packages with `npm install`.
 3. Apply migrations with `npm run db:migrate -- --name init`.
 4. Load development data with `npm run db:seed`.
-5. Run the API with `npm run dev:server`.
-6. In another terminal, run the client with `npm run dev`.
+5. Run `npm run dev` to start both the API and client. Press Ctrl+C to stop both.
+
+To run them in separate terminals, use `npm run dev:server` and `npm run dev:client`.
 
 The seeded identities include employee `E0001`, manager `M001`, BUHR `HR001`, and TD Admin `ADMIN001`. In development only, set `VITE_DEV_EMPLOYEE_ID` or send `x-employee-id`. The server refuses development authentication when `NODE_ENV=production`.
 
