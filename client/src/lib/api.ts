@@ -1,4 +1,4 @@
-import type { Goal, GoalDomain, JournalEntry, Me, Reflection, Sdp, SharingScope, TrackingRow } from '@sdp/shared';
+import type { CheckIn, CheckInPeriod, CheckInStatus, Goal, GoalDomain, JournalEntry, Me, Reflection, Sdp, SharingScope, TrackingRow } from '@sdp/shared';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
 const DEFAULT_DEV_EMPLOYEE_ID = (import.meta.env.VITE_DEV_EMPLOYEE_ID as string | undefined) ?? 'E0001';
@@ -11,26 +11,29 @@ const DEFAULT_DEV_EMPLOYEE_ID = (import.meta.env.VITE_DEV_EMPLOYEE_ID as string 
  * Real SSO replaces all of this with a server-side session cookie.
  */
 const DEV_IDENTITY_KEY = 'sdp_dev_employee_id_v1';
+let activeDevEmployeeId = DEFAULT_DEV_EMPLOYEE_ID;
 
 export function getDevEmployeeId(): string {
   try {
-    return localStorage.getItem(DEV_IDENTITY_KEY) || DEFAULT_DEV_EMPLOYEE_ID;
+    return sessionStorage.getItem(DEV_IDENTITY_KEY) || activeDevEmployeeId;
   } catch {
-    return DEFAULT_DEV_EMPLOYEE_ID;
+    return activeDevEmployeeId;
   }
 }
 
 export function setDevEmployeeId(employeeId: string) {
+  activeDevEmployeeId = employeeId;
   try {
-    localStorage.setItem(DEV_IDENTITY_KEY, employeeId);
+    sessionStorage.setItem(DEV_IDENTITY_KEY, employeeId);
   } catch {
-    // ignore, falls back to the default on next read
+    // Keep the selected identity in memory when storage is unavailable.
   }
 }
 
 export function clearDevEmployeeId() {
+  activeDevEmployeeId = DEFAULT_DEV_EMPLOYEE_ID;
   try {
-    localStorage.removeItem(DEV_IDENTITY_KEY);
+    sessionStorage.removeItem(DEV_IDENTITY_KEY);
   } catch {
     // ignore
   }
@@ -101,6 +104,10 @@ export const api = {
     submit: (sharingScope: SharingScope) => request<Sdp>('/sdp/submit', { method: 'POST', body: JSON.stringify({ sharingScope }) }),
     confirmConversation: () => request<Sdp>('/sdp/confirm-conversation', { method: 'POST' }),
   },
+  checkins: {
+    list: () => request<CheckIn[]>('/checkins'),
+    create: (body: { goalId: string; period: CheckInPeriod; progressNote: string; status: Exclude<CheckInStatus, 'NOT_STARTED'> }) => request<CheckIn>('/checkins', { method: 'POST', body: JSON.stringify(body) }),
+  },
   journal: {
     list: () => request<JournalEntry[]>('/journal'),
     create: (body: string) => request<JournalEntry>('/journal', { method: 'POST', body: JSON.stringify({ body }) }),
@@ -108,5 +115,15 @@ export const api = {
     remove: (entryId: string) => request<void>(`/journal/${entryId}`, { method: 'DELETE' }),
   },
   team: { list: () => request<TeamReportee[]>('/team'), detail: (employeeId: string) => request<ReporteeDetail>(`/team/${employeeId}`) },
-  hr: { tracking: async () => (await request<{ data: TrackingRow[] }>('/hr/tracking')).data },
+  hr: { tracking: async () => {
+    const rows: TrackingRow[] = [];
+    let page = 1;
+    while (true) {
+      const result = await request<{ data: TrackingRow[]; pagination: { total: number } }>(`/hr/tracking?page=${page}&pageSize=200`);
+      rows.push(...result.data);
+      if (rows.length >= result.pagination.total) return rows;
+      if (!result.data.length) throw new Error('Tracking pagination ended before all employees were loaded');
+      page += 1;
+    }
+  } },
 };

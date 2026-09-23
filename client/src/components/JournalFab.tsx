@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
+import { Mail, NotebookPen } from 'lucide-react';
 import { useSdp } from '../state/SdpContext';
-import journalIcon from '../assets/journal icon.png';
 
 export function JournalFab() {
   const location = useLocation();
@@ -9,21 +9,22 @@ export function JournalFab() {
   const showJournal = location.pathname !== '/journal';
 
   return (
-    <>
+    <div className="reflection-fabs">
       {showLetter && (
-        <Link to="/letter" className="journal-fab" style={{ bottom: 74, background: 'var(--blue)' }}>
-          <span>&#128220;</span> My Letter
+        <Link to="/letter" className="journal-fab letter-fab" style={{ background: 'var(--blue)' }}>
+          <span className="fab-icon-wrap"><Mail aria-hidden="true" size={19} strokeWidth={2.25} /></span>
+          My Letter
         </Link>
       )}
       {showJournal && (
         <Link to="/journal" className="journal-fab journal-entry-fab" aria-label="Open My Journal — something on your mind?">
-          <img className="journal-fab-icon" src={journalIcon} alt="" aria-hidden="true" />
+          <span className="fab-icon-wrap"><NotebookPen aria-hidden="true" size={19} strokeWidth={2.25} /></span>
           <span className="journal-labels">
             <span className="journal-label-default">My Journal</span>
             <span className="journal-label-hover">Something on your mind?</span>
           </span>
         </Link>
       )}
-    </>
+    </div>
   );
 }

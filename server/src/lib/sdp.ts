@@ -1,7 +1,7 @@
 import { prisma } from './db';
 import { ApiError } from './errors';
 
-export const sdpInclude = { reflection: true, goals: { orderBy: { sortOrder: 'asc' as const } } };
+export const sdpInclude = { reflection: true, goals: { orderBy: { sortOrder: 'asc' as const } }, cycle: true };
 
 export async function activeCycle() {
   const cycle = await prisma.cycle.findFirst({ where: { status: 'ACTIVE' } });
@@ -27,5 +27,6 @@ export function serializeSdp(sdp: any) {
     lastSavedAt: sdp.lastSavedAt.toISOString(), version: sdp.version,
     reflection: sdp.reflection ? { q1Words: sdp.reflection.q1Words, q1Text: sdp.reflection.q1Text, q2Text: sdp.reflection.q2Text, q3Text: sdp.reflection.q3Text, q4Text: sdp.reflection.q4Text, q5Text: sdp.reflection.q5Text, q6Text: sdp.reflection.q6Text } : null,
     goals: sdp.goals.map((goal: any) => ({ goalId: goal.goalId, sortOrder: goal.sortOrder, title: goal.title, domain: goal.domain, whyItMatters: goal.whyItMatters, grownWhen: goal.grownWhen, actionPlan: { do: goal.actionDo, learn: goal.actionLearn, connect: goal.actionConnect }, supportNeeded: goal.supportNeeded })),
+    checkInWindows: sdp.cycle ? { Q1: sdp.cycle.q1WindowStart.toISOString(), MID_YEAR: sdp.cycle.midYearCutoff.toISOString(), Q2: sdp.cycle.q2WindowStart.toISOString(), YEAR_END: sdp.cycle.yearEndCutoff.toISOString() } : undefined,
   };
 }

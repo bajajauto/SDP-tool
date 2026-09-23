@@ -33,12 +33,11 @@ export function Dashboard() {
     return state.goals.length > 0 && state.goals.every((goal) => !!state.checkIns[`${goal.id}:${period}`]);
   }
 
+  const periods = ['Q1', 'MID_YEAR', 'Q2', 'YEAR_END'] as CheckInPeriod[];
+  const availablePeriods = periods.filter((period) => state.checkInWindows && new Date(state.checkInWindows[period]) <= new Date());
   const timeline = [
     { label: 'Publish SDP', done: state.status !== 'NOT_STARTED' && state.status !== 'DRAFT', marker: 'S' },
-    { label: 'Quarterly Check-in 1', done: hasAnyCheckIn('Q1'), marker: '1' },
-    { label: 'Mid-Year Conversation', done: hasAnyCheckIn('MID_YEAR'), marker: 'M' },
-    { label: 'Quarterly Check-in 2', done: hasAnyCheckIn('Q2'), marker: '2' },
-    { label: 'Year-End Conversation', done: hasAnyCheckIn('YEAR_END'), marker: 'E' },
+    ...availablePeriods.map((period) => ({ label: periodLabels[period], done: hasAnyCheckIn(period), marker: period === 'Q1' ? '1' : period === 'MID_YEAR' ? 'M' : period === 'Q2' ? '2' : 'E' })),
   ];
   const currentTimelineIndex = timeline.findIndex((item) => !item.done);
 
@@ -66,7 +65,7 @@ export function Dashboard() {
 
       <div className="dash-tab-bar">
         <button className={`dash-tab${tab === 'goals' ? ' on' : ''}`} onClick={() => setTab('goals')}>Track My Goals</button>
-        {(['Q1', 'MID_YEAR', 'Q2', 'YEAR_END'] as CheckInPeriod[]).map((p) => {
+        {availablePeriods.map((p) => {
           const complete = isCheckInComplete(p);
           return <button key={p} className={`dash-tab${tab === p ? ' on' : ''}${complete ? ' completed' : ''}`} onClick={() => setTab(p)}>{complete && <span className="dash-tab-check" aria-hidden="true">&#10003;</span>}{periodLabels[p]}</button>;
         })}
@@ -80,15 +79,12 @@ export function Dashboard() {
               <thead>
                 <tr>
                   <th>Goal</th>
-                  <th className="cen">Quarterly Check-in 1</th>
-                  <th className="cen">Mid-Year</th>
-                  <th className="cen">Quarterly Check-in 2</th>
-                  <th className="cen">Year-End</th>
+                  {availablePeriods.map((period) => <th className="cen" key={period}>{periodLabels[period]}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {state.goals.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)', fontStyle: 'italic' }}>Set development goals first to start tracking.</td></tr>
+                  <tr><td colSpan={availablePeriods.length + 1} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)', fontStyle: 'italic' }}>Set development goals first to start tracking.</td></tr>
                 )}
                 {state.goals.map((g, goalIndex) => (
                   <tr key={`${g.id}-${goalIndex}`}>
@@ -97,7 +93,7 @@ export function Dashboard() {
                       <div className="tg-goal">{g.title || 'Untitled goal'}</div>
                       {g.domain && <div className="tg-domain">{domainLabels[g.domain]}</div>}
                     </td>
-                    {(['Q1', 'MID_YEAR', 'Q2', 'YEAR_END'] as CheckInPeriod[]).map((p) => {
+                    {availablePeriods.map((p) => {
                       const ci = state.checkIns[`${g.id}:${p}`];
                       return (
                         <td className="cen" key={p}>
@@ -116,7 +112,7 @@ export function Dashboard() {
         </div>
       )}
 
-      {(['Q1', 'MID_YEAR', 'Q2', 'YEAR_END'] as CheckInPeriod[]).map((p) =>
+      {availablePeriods.map((p) =>
         tab === p ? (
           <CheckInPanel
             key={p}

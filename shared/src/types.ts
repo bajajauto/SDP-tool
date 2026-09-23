@@ -71,6 +71,7 @@ export interface Sdp {
   version: number;
   reflection: Reflection | null;
   goals: Goal[];
+  checkInWindows?: { Q1: string; MID_YEAR: string; Q2: string; YEAR_END: string };
 }
 
 export interface CheckIn {
@@ -112,8 +113,22 @@ export interface TrackingRow {
   employeeId: string;
   employeeName: string;
   managerName: string;
+  designation?: string;
+  jobLevel?: string;
+  positionLevel?: string;
+  company?: string;
+  sector?: string;
   bu: string;
+  function?: string;
   department: string;
+  baseLocation?: string;
+  circle?: string;
+  ro?: string;
+  hub?: string;
+  buHeadName?: string;
+  buhrName?: string;
+  gender?: string;
+  topPotential?: string;
   sharingScope: SharingScope | null;
   milestones: Record<Milestone, { state: MilestoneState; completedAt: string | null }>;
 }

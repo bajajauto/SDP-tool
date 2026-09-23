@@ -8,6 +8,7 @@ import type { TrackingRow } from '@sdp/shared';
  */
 export function TrackingTable({ rows, showBu }: { rows: TrackingRow[]; showBu?: boolean }) {
   const formatDate = (value: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
+  const visibleMilestones = MILESTONE_ORDER.filter((milestone) => rows.some((row) => row.milestones[milestone].state !== 'NOT_DUE'));
   return (
     <div className="buhr-tablewrap">
       <div className="buhr-table-scroll">
@@ -17,7 +18,7 @@ export function TrackingTable({ rows, showBu }: { rows: TrackingRow[]; showBu?: 
               <th className="col-emp">Employee</th>
               <th className="col-mgr">Manager</th>
               {showBu && <th>BU</th>}
-              {MILESTONE_ORDER.map((m) => <th key={m}>{MILESTONE_LABELS[m]}</th>)}
+              {visibleMilestones.map((m) => <th key={m}>{MILESTONE_LABELS[m]}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -34,7 +35,7 @@ export function TrackingTable({ rows, showBu }: { rows: TrackingRow[]; showBu?: 
                 </td>
                 <td><div className="buhr-mgr">{row.managerName}</div></td>
                 {showBu && <td><div className="buhr-mgr">{row.bu}</div></td>}
-                {MILESTONE_ORDER.map((m) => {
+                {visibleMilestones.map((m) => {
                   const cell = row.milestones[m];
                   return (
                     <td key={m}>

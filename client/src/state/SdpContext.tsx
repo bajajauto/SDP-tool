@@ -49,6 +49,7 @@ export interface SdpDraftState {
   checklist: Record<string, boolean>;
   checkIns: Record<string, CheckInDraft>;
   checkInDates: Record<CheckInPeriod, string>;
+  checkInWindows: Record<CheckInPeriod, string> | null;
   supportNeeds: { id: string; body: string; createdAt: string }[];
 }
 
@@ -123,7 +124,7 @@ interface SdpContextValue {
   confirmConversation: () => Promise<void>;
   toggleChecklistItem: (id: string) => void;
   resetChecklist: () => void;
-  submitCheckIn: (period: CheckInPeriod, goalId: string, note: string, status: CheckInStatus) => void;
+  submitCheckIn: (period: CheckInPeriod, goalId: string, note: string, status: CheckInStatus) => Promise<void>;
   setCheckInDate: (period: CheckInPeriod, date: string) => void;
   addSupportNeed: (body: string) => void;
 }
@@ -137,6 +138,7 @@ export function SdpProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SdpStatus>('NOT_STARTED');
   const [sharingScope, setSharingScope] = useState<SharingScope | null>(null);
   const [conversationConfirmedAt, setConversationConfirmedAt] = useState<string | null>(null);
+  const [checkInWindows, setCheckInWindows] = useState<Record<CheckInPeriod, string> | null>(null);
   const [extras, setExtras] = useState<LocalExtras>(loadExtras);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
@@ -154,7 +156,7 @@ export function SdpProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    api.sdp.get().then((sdp) => {
+    Promise.all([api.sdp.get(), api.checkins.list()]).then(([sdp, checkIns]) => {
       if (cancelled) return;
       setReflection(toReflectionDraft(sdp.reflection));
       setGoals(sdp.goals.map((g) => ({
@@ -164,6 +166,8 @@ export function SdpProvider({ children }: { children: ReactNode }) {
       setStatus(sdp.status);
       setSharingScope(sdp.sharingScope);
       setConversationConfirmedAt(sdp.conversationConfirmedAt);
+      setCheckInWindows(sdp.checkInWindows ?? null);
+      setExtras((current) => ({ ...current, checkIns: Object.fromEntries(checkIns.map((checkIn) => [`${checkIn.goalId}:${checkIn.period}`, { progressNote: checkIn.progressNote, status: checkIn.status, submittedAt: checkIn.submittedAt }])) }));
       setLastSavedAt(new Date(sdp.lastSavedAt));
       setSaveStatus('saved');
     }).catch(() => {
@@ -210,7 +214,7 @@ export function SdpProvider({ children }: { children: ReactNode }) {
   }
 
   const value: SdpContextValue = {
-    state: { reflection, goals, status, sharingScope, conversationConfirmedAt, ...extras },
+    state: { reflection, goals, status, sharingScope, conversationConfirmedAt, checkInWindows, ...extras },
     lastSavedAt,
     saveStatus,
     loading,
@@ -286,12 +290,10 @@ export function SdpProvider({ children }: { children: ReactNode }) {
     resetChecklist: () => {
       setExtras((e) => ({ ...e, checklist: {} }));
     },
-    submitCheckIn: (period, goalId, note, status2) => {
-      setStatus((s) => (s === 'CONVERSATION_CONFIRMED' ? 'IN_PROGRESS' : s));
-      setExtras((e) => ({
-        ...e,
-        checkIns: { ...e.checkIns, [`${goalId}:${period}`]: { progressNote: note, status: status2, submittedAt: new Date().toISOString() } },
-      }));
+    submitCheckIn: async (period, goalId, note, status2) => {
+      const saved = await api.checkins.create({ goalId, period, progressNote: note, status: status2 === 'NOT_STARTED' ? 'IN_PROGRESS' : status2 });
+      setStatus('IN_PROGRESS');
+      setExtras((e) => ({ ...e, checkIns: { ...e.checkIns, [`${goalId}:${period}`]: { progressNote: saved.progressNote, status: saved.status, submittedAt: saved.submittedAt } } }));
     },
     setCheckInDate: (period, date) => {
       setExtras((e) => ({ ...e, checkInDates: { ...e.checkInDates, [period]: date } }));
