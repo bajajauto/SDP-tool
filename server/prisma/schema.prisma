@@ -159,9 +159,44 @@ model Cycle {
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
   sdps           Sdp[]
+  stageDeadlines StageDeadline[]
+  cohortConfigs  CohortConfig[]
 
   @@index([status])
   @@map("cycles")
+}
+
+model CohortConfig {
+  cohortConfigId          String   @id @default(uuid()) @map("cohort_config_id")
+  cycleId                 String   @map("cycle_id")
+  bu                      String
+  name                    String
+  dcType                  String   @map("dc_type")
+  eventStart              DateTime @map("event_start") @db.Date
+  eventEnd                DateTime @map("event_end") @db.Date
+  participantFileName     String?  @map("participant_file_name")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+  cycle                   Cycle    @relation(fields: [cycleId], references: [cycleId], onDelete: Cascade)
+
+  @@unique([cycleId, bu])
+  @@map("cohort_configs")
+}
+
+model StageDeadline {
+  stageDeadlineId String   @id @default(uuid()) @map("stage_deadline_id")
+  cycleId        String   @map("cycle_id")
+  bu             String
+  name           String
+  deadline       DateTime @db.Date
+  sortOrder      Int      @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  cycle          Cycle    @relation(fields: [cycleId], references: [cycleId], onDelete: Cascade)
+
+  @@unique([cycleId, bu, sortOrder])
+  @@index([cycleId, bu])
+  @@map("stage_deadlines")
 }
 
 model Sdp {

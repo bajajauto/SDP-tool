@@ -93,6 +93,10 @@ export interface GoalPatchBody {
   supportNeeded?: string;
 }
 
+export interface StageDeadline { id?: string; name: string; deadline: string; }
+export interface CohortConfig { name: string; dcType: 'EX_TO_LX' | 'LX_TO_LEADER'; eventStart: string; eventEnd: string; participantFileName?: string | null; }
+export interface StageDeadlineSetup { cycle: { cycleId: string; label: string }; businessUnits: string[]; cohort: CohortConfig | null; stages: StageDeadline[]; }
+
 export const api = {
   me: () => request<Me>('/me'),
   sdp: {
@@ -126,4 +130,8 @@ export const api = {
       page += 1;
     }
   } },
+  admin: {
+    stageDeadlines: (bu?: string) => request<StageDeadlineSetup>(`/admin/stage-deadlines${bu ? `?bu=${encodeURIComponent(bu)}` : ''}`),
+    saveStageDeadlines: (bu: string, cohort: CohortConfig, stages: StageDeadline[], applyToAll = false) => request<{ appliedBusinessUnits: number }>('/admin/stage-deadlines', { method: 'PUT', body: JSON.stringify({ bu, cohort, stages: stages.map(({ name, deadline }) => ({ name, deadline })), applyToAll }) }),
+  },
 };

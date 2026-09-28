@@ -68,6 +68,7 @@ export default function App() {
 
   useEffect(() => {
     if (view === 'buhr' && !location.pathname.startsWith('/buhr/')) navigate('/buhr/tracking', { replace: true });
+    if (view === 'tdadmin' && !location.pathname.startsWith('/tdadmin/')) navigate('/tdadmin/tracking', { replace: true });
   }, [location.pathname, navigate, view]);
 
   if (accessDenied) {
@@ -88,6 +89,7 @@ export default function App() {
     if (role === 'employee') navigate('/');
     if (role === 'manager') navigate('/home');
     if (role === 'buhr') navigate('/buhr/tracking');
+    if (role === 'tdadmin') navigate('/tdadmin/tracking');
   }
 
   function handleSwitchView(role: ViewRole) {
@@ -104,7 +106,7 @@ export default function App() {
     }
     setAccessDenied(false);
     setView(role);
-    navigate(role === 'employee' ? '/' : role === 'manager' ? '/home' : role === 'buhr' ? '/buhr/tracking' : '/');
+    navigate(role === 'employee' ? '/' : role === 'manager' ? '/home' : role === 'buhr' ? '/buhr/tracking' : '/tdadmin/tracking');
   }
 
   function handleSignOut() {
@@ -136,11 +138,11 @@ export default function App() {
       <div className="app-shell">
         <TopBar me={me} view={view} onSwitchView={handleSwitchView} onSignOut={handleSignOut} />
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-          {view === 'buhr' ? <BuhrSidebar onSignOut={handleSignOut} /> : <Sidebar roles={me?.roles ?? []} onSignOut={handleSignOut} hideJourney={view === 'tdadmin'} hideSupport={view === 'tdadmin'} />}
+          {view === 'buhr' ? <BuhrSidebar onSignOut={handleSignOut} /> : <Sidebar roles={me?.roles ?? []} onSignOut={handleSignOut} hideJourney={view === 'tdadmin'} hideSupport={view === 'tdadmin'} adminMode={view === 'tdadmin'} />}
           {view === 'buhr' ? (
             <main className="app-main" style={{ flex: 1, minWidth: 0 }}><HrDashboard exportsOnly={location.pathname === '/buhr/exports'} /></main>
           ) : view === 'tdadmin' ? (
-            <main className="app-main" style={{ flex: 1, minWidth: 0 }}><TdAdminDashboard /></main>
+            <main className="app-main" style={{ flex: 1, minWidth: 0 }}><TdAdminDashboard section={location.pathname === '/tdadmin/cohort-setup' ? 'cohort' : 'tracking'} /></main>
           ) : (
             <>
             <main className="app-main" style={{ flex: 1, minWidth: 0 }}>

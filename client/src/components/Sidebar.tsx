@@ -19,7 +19,7 @@ const steps: NavItemDef[] = [
   { to: '/dashboard', label: 'Track Progress', dot: '↗' },
 ];
 
-export function Sidebar({ roles, onSignOut, hideJourney = false, hideSupport = false }: { roles: Role[]; onSignOut: () => void; hideJourney?: boolean; hideSupport?: boolean }) {
+export function Sidebar({ roles, onSignOut, hideJourney = false, hideSupport = false, adminMode = false }: { roles: Role[]; onSignOut: () => void; hideJourney?: boolean; hideSupport?: boolean; adminMode?: boolean }) {
   const { state } = useSdp();
 
   const reflectionCount = [
@@ -56,6 +56,16 @@ export function Sidebar({ roles, onSignOut, hideJourney = false, hideSupport = f
   return (
     <nav className="sidebar visible" aria-label="Main navigation">
       <div className="sidebar-label">Workspace</div>
+      {adminMode ? <>
+        <NavLink to="/tdadmin/cohort-setup" className={({ isActive }) => `snav-item${isActive ? ' active' : ''}`}>
+          <div className="snav-dot" aria-hidden="true">&#128197;</div>
+          Cohort setup
+        </NavLink>
+        <NavLink to="/tdadmin/tracking" className={({ isActive }) => `snav-item${isActive ? ' active' : ''}`}>
+          <div className="snav-dot" aria-hidden="true">&#128202;</div>
+          Trackers and exports
+        </NavLink>
+      </> : <>
       <NavLink to="/" className="snav-item" style={{ color: 'var(--muted)' }}>
         <div className="snav-dot" style={{ background: 'var(--cream-d)', color: 'var(--muted)' }}>&#8505;</div>
         Philosophy &amp; Overview
@@ -64,6 +74,7 @@ export function Sidebar({ roles, onSignOut, hideJourney = false, hideSupport = f
         <div className="snav-dot"><img className="snav-dashboard-icon" src={dashboardIcon} alt="" aria-hidden="true" /></div>
         Dashboard
       </NavLink>
+      </>}
       {!hideJourney && <>
       <div className="sidebar-label sidebar-section-label">My Journey</div>
       <div className="sidebar-progress" aria-label={`${journeyDone} of 4 journey stages complete`}>

@@ -16,3 +16,38 @@ adminRouter.get('/data-gaps', asyncRoute(async (_req, res) => res.json(await pri
 adminRouter.post('/ec-sync', asyncRoute(async (req, res) => res.status(202).json(await runEcSync(new MockEcProvider(), (req as AuthedRequest).employeeId, req.ip))));
 adminRouter.get('/templates', asyncRoute(async (_req, res) => res.json(await prisma.emailTemplate.findMany({ orderBy: { key: 'asc' } }))));
 adminRouter.put('/templates/:key', asyncRoute(async (req, res) => { const body = z.object({ subject: z.string().min(1).max(300), bodyHtml: z.string().min(1).max(50000) }).parse(req.body); const existing = await prisma.emailTemplate.findFirst({ where: { key: req.params.key, scope: 'TD_ADMIN', buId: null } }); res.json(existing ? await prisma.emailTemplate.update({ where: { templateId: existing.templateId }, data: { ...body, updatedBy: (req as AuthedRequest).employeeId } }) : await prisma.emailTemplate.create({ data: { key: req.params.key, scope: 'TD_ADMIN', ...body, updatedBy: (req as AuthedRequest).employeeId } })); }));
+
+const stageSchema = z.object({ name: z.string().trim().min(1).max(100), deadline: z.coerce.date() });
+adminRouter.get('/stage-deadlines', asyncRoute(async (req, res) => {
+  const requestedBu = z.string().trim().min(1).max(100).optional().parse(req.query.bu);
+  const cycle = await prisma.cycle.findFirst({ where: { status: 'ACTIVE' }, orderBy: { startDate: 'desc' } });
+  if (!cycle) throw new ApiError(404, 'NOT_FOUND', 'No active cycle found');
+  const businessUnits = await prisma.employee.findMany({ where: { isActive: true }, distinct: ['bu'], orderBy: { bu: 'asc' }, select: { bu: true } });
+  const bu = requestedBu ?? businessUnits[0]?.bu;
+  if (!bu) throw new ApiError(404, 'NOT_FOUND', 'No business units found');
+  const [rows, cohort] = await Promise.all([
+    prisma.stageDeadline.findMany({ where: { cycleId: cycle.cycleId, bu }, orderBy: { sortOrder: 'asc' } }),
+    prisma.cohortConfig.findUnique({ where: { cycleId_bu: { cycleId: cycle.cycleId, bu } } }),
+  ]);
+  res.json({ cycle: { cycleId: cycle.cycleId, label: cycle.label }, businessUnits: businessUnits.map((item) => item.bu), cohort: cohort ? { name: cohort.name, dcType: cohort.dcType, eventStart: cohort.eventStart.toISOString().slice(0, 10), eventEnd: cohort.eventEnd.toISOString().slice(0, 10), participantFileName: cohort.participantFileName } : null, stages: rows.map((row) => ({ id: row.stageDeadlineId, name: row.name, deadline: row.deadline.toISOString().slice(0, 10) })) });
+}));
+adminRouter.put('/stage-deadlines', asyncRoute(async (req, res) => {
+  const body = z.object({ bu: z.string().trim().min(1).max(100), cohort: z.object({ name: z.string().trim().min(1).max(100), dcType: z.enum(['EX_TO_LX', 'LX_TO_LEADER']), eventStart: z.coerce.date(), eventEnd: z.coerce.date(), participantFileName: z.string().trim().max(255).nullable().optional() }), stages: z.array(stageSchema).min(1).max(30), applyToAll: z.boolean().default(false) }).parse(req.body);
+  if (body.cohort.eventEnd < body.cohort.eventStart) throw new ApiError(400, 'INVALID_DATES', 'DC event end must be on or after the start date');
+  if (body.stages.some((stage) => stage.deadline > body.cohort.eventEnd)) throw new ApiError(400, 'INVALID_DEADLINE', 'Every stage deadline must be on or before the DC event end date');
+  const cycle = await prisma.cycle.findFirst({ where: { status: 'ACTIVE' }, orderBy: { startDate: 'desc' } });
+  if (!cycle) throw new ApiError(404, 'NOT_FOUND', 'No active cycle found');
+  const selectedBu = await prisma.employee.findFirst({ where: { isActive: true, bu: body.bu }, select: { bu: true } });
+  if (!selectedBu) throw new ApiError(404, 'NOT_FOUND', 'Business unit not found');
+  const businessUnits = body.applyToAll
+    ? (await prisma.employee.findMany({ where: { isActive: true }, distinct: ['bu'], select: { bu: true } })).map((item) => item.bu)
+    : [body.bu];
+  const auth = req as AuthedRequest;
+  await prisma.$transaction(async (tx) => {
+    await tx.stageDeadline.deleteMany({ where: { cycleId: cycle.cycleId, bu: { in: businessUnits } } });
+    await tx.stageDeadline.createMany({ data: businessUnits.flatMap((bu) => body.stages.map((stage, sortOrder) => ({ cycleId: cycle.cycleId, bu, name: stage.name, deadline: stage.deadline, sortOrder }))) });
+    for (const bu of businessUnits) await tx.cohortConfig.upsert({ where: { cycleId_bu: { cycleId: cycle.cycleId, bu } }, create: { cycleId: cycle.cycleId, bu, ...body.cohort }, update: body.cohort });
+    await tx.auditLog.create({ data: auditData({ actorEmployeeId: auth.employeeId, actorRole: 'TD_ADMIN', action: body.applyToAll ? 'STAGE_DEADLINES_APPLIED_TO_ALL_BUS' : 'STAGE_DEADLINES_UPDATED', entityType: 'CYCLE', entityId: cycle.cycleId, metadata: { bu: body.bu, businessUnits, stageCount: body.stages.length }, ipAddress: req.ip }) });
+  });
+  res.json({ bu: body.bu, appliedBusinessUnits: businessUnits.length, stages: body.stages.map((stage, index) => ({ id: `${body.bu}-${index}`, name: stage.name, deadline: stage.deadline.toISOString().slice(0, 10) })) });
+}));
