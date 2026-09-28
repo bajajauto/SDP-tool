@@ -30,6 +30,10 @@ export const copy = {
     title: 'Your access is being set up',
     body: 'We could not find your employee record yet. Please contact TD if this does not resolve shortly.',
   },
+  signingIn: {
+    title: 'Signing you in',
+    body: 'Loading your Self Development Plan.',
+  },
   placeholder: {
     comingSoon: 'This content is coming soon.',
   },

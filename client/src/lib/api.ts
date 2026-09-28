@@ -1,6 +1,8 @@
 import type { CheckIn, CheckInPeriod, CheckInStatus, Goal, GoalDomain, JournalEntry, Me, Reflection, Sdp, SharingScope, TrackingRow } from '@sdp/shared';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
+/** Built with VITE_AUTH_MODE=sso for Azure: identity comes from the Entra session, never from the client. */
+export const SSO_ENABLED = import.meta.env.VITE_AUTH_MODE === 'sso';
 const DEFAULT_DEV_EMPLOYEE_ID = (import.meta.env.VITE_DEV_EMPLOYEE_ID as string | undefined) ?? 'E0001';
 
 /**
@@ -55,7 +57,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: 'include',
-    headers: { 'content-type': 'application/json', 'x-employee-id': getDevEmployeeId(), ...init?.headers },
+    headers: { 'content-type': 'application/json', ...(SSO_ENABLED ? {} : { 'x-employee-id': getDevEmployeeId() }), ...init?.headers },
   });
   if (response.status === 204) return undefined as T;
   const payload = await response.json().catch(() => null);

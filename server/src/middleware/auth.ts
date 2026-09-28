@@ -14,19 +14,32 @@ export interface AuthedRequest extends Request {
  * Stand-in for the SSO session resolution in FR-SYS-010. Real SSO
  * (OIDC/SAML against the Bajaj identity provider, OQ-19) belongs here.
  * For local development, the caller identifies as an employee via the
- * `x-employee-id` header; defaults to the first seed employee.
+ * `x-employee-id` header; defaults to the first seed employee. On Azure,
+ * `appservice` mode trusts the Entra principal injected by App Service
+ * Authentication and never reads `x-employee-id`.
  *
  * Real or stub, this is the one place identity is resolved. Every route
  * reads `req.employeeId` and `req.roles` from here, never from client input.
  */
 export const attachIdentity = asyncRoute(async (req: Request, res: Response, next: NextFunction) => {
-  // OIDC session resolution plugs in here once Bajaj supplies the issuer and claims contract.
-  const requestedId = config.AUTH_MODE === 'development' ? req.header('x-employee-id') : undefined;
-  const employeeId = (requestedId || config.DEV_EMPLOYEE_ID).trim();
-  const employee = await prisma.employee.findFirst({
-    where: { employeeId, isActive: true },
-    include: { roleGrants: true, reportees: { where: { isActive: true, email: corporateEmailWhere }, select: { employeeId: true }, take: 1 }, buhrEmployees: { where: { isActive: true, email: corporateEmailWhere }, select: { employeeId: true }, take: 1 } },
-  });
+  const include = { roleGrants: true, reportees: { where: { isActive: true, email: corporateEmailWhere }, select: { employeeId: true }, take: 1 }, buhrEmployees: { where: { isActive: true, email: corporateEmailWhere }, select: { employeeId: true }, take: 1 } } as const;
+  let employee;
+  if (config.AUTH_MODE === 'development') {
+    const employeeId = (req.header('x-employee-id') || config.DEV_EMPLOYEE_ID).trim();
+    employee = await prisma.employee.findFirst({ where: { employeeId, isActive: true }, include });
+  } else if (config.AUTH_MODE === 'appservice') {
+    // Set by App Service Authentication after Entra sign-in: the user's UPN, matched to the EC email.
+    const principalEmail = req.header('x-ms-client-principal-name')?.trim();
+    if (!principalEmail) {
+      res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Sign in to continue' } });
+      return;
+    }
+    employee = await prisma.employee.findFirst({ where: { email: { equals: principalEmail, mode: 'insensitive' }, isActive: true }, include });
+  } else {
+    // OIDC session resolution plugs in here once Bajaj supplies the issuer and claims contract.
+    res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Sign in to continue' } });
+    return;
+  }
 
   if (!employee) {
     res.status(403).json({ error: 'NO_ACTIVE_EC_RECORD' });

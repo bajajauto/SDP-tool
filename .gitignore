@@ -5,3 +5,5 @@ dist/
 .env
 server/.env
 coverage/
+*.PublishSettings
+deploy/

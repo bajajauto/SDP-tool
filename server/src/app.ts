@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -19,5 +20,10 @@ export function createApp() {
   app.use(helmet({ contentSecurityPolicy: false })); app.use(cors({ origin: config.CLIENT_ORIGIN, credentials: true })); app.use(express.json({ limit: '256kb' })); app.use('/api', rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }));
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' })); app.use('/api', attachIdentity);
   app.use('/api/me', meRouter); app.use('/api/sdp', sdpRouter); app.use('/api/checkins', checkInsRouter); app.use('/api/support-needs', supportNeedsRouter); app.use('/api/journal', journalRouter); app.use('/api/team', teamRouter); app.use('/api/hr', hrRouter); app.use('/api/admin', adminRouter);
+  if (config.CLIENT_DIST_DIR) {
+    const clientDist = path.resolve(config.CLIENT_DIST_DIR);
+    app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
+    app.get(/^\/(?!api(\/|$)).*/, (_req, res) => res.sendFile(path.join(clientDist, 'index.html'), { headers: { 'Cache-Control': 'no-cache' } }));
+  }
   app.use(notFound); app.use(errorHandler); return app;
 }

@@ -25,9 +25,23 @@ import { TdAdminDashboard } from './pages/TdAdminDashboard';
 import { HomeDashboard } from './pages/HomeDashboard';
 import { RouteStub } from './pages/RouteStub';
 import { SdpProvider } from './state/SdpContext';
-import { api, clearDevEmployeeId, DEMO_IDENTITIES, setDevEmployeeId } from './lib/api';
+import { api, clearDevEmployeeId, DEMO_IDENTITIES, setDevEmployeeId, SSO_ENABLED } from './lib/api';
+import { copy } from './content/copy';
 
 const SESSION_VIEW_KEY = 'sdp_authenticated_view_v1';
+
+/** Landing workspace for an SSO user: the most specific role they hold. */
+function defaultViewFor(roles: Me['roles']): ViewRole {
+  if (roles.includes('TD_ADMIN')) return 'tdadmin';
+  if (roles.includes('BUHR')) return 'buhr';
+  if (roles.includes('MANAGER')) return 'manager';
+  return 'employee';
+}
+
+function viewAllowed(view: ViewRole, roles: Me['roles']): boolean {
+  const requiredRole = view === 'manager' ? 'MANAGER' : view === 'buhr' ? 'BUHR' : view === 'tdadmin' ? 'TD_ADMIN' : 'EMPLOYEE';
+  return roles.includes(requiredRole);
+}
 
 function restoreSessionView(): ViewRole | null {
   try {
@@ -50,11 +64,13 @@ export default function App() {
   const location = useLocation();
 
   useEffect(() => {
-    if (!view) return;
+    if (!view && !SSO_ENABLED) return;
     let active = true;
     setAccessDenied(false);
     api.me().then((profile) => {
-      if (active) setMe(profile);
+      if (!active) return;
+      setMe(profile);
+      if (SSO_ENABLED && (!view || !viewAllowed(view, profile.roles))) setView(defaultViewFor(profile.roles));
     }).catch(() => {
       if (active) setAccessDenied(true);
     });
@@ -95,6 +111,7 @@ export default function App() {
   function handleSwitchView(role: ViewRole) {
     const requiredRole = role === 'manager' ? 'MANAGER' : role === 'buhr' ? 'BUHR' : role === 'tdadmin' ? 'TD_ADMIN' : 'EMPLOYEE';
     const switchingWithinOwnAccount = me?.roles.includes(requiredRole);
+    if (SSO_ENABLED && !switchingWithinOwnAccount) return;
     if (!switchingWithinOwnAccount) {
       setDevEmployeeId(DEMO_IDENTITIES[role]);
       setMe(null);
@@ -115,6 +132,10 @@ export default function App() {
     } catch {
       // Always clear the active in-memory session.
     }
+    if (SSO_ENABLED) {
+      window.location.assign('/.auth/logout?post_logout_redirect_uri=/');
+      return;
+    }
     clearDevEmployeeId();
     setView(null);
     setMe(null);
@@ -124,6 +145,15 @@ export default function App() {
 
   function handleBack() {
     navigate('/home');
+  }
+
+  if (!view && SSO_ENABLED) {
+    return (
+      <div className="placeholder-card">
+        <h2>{copy.signingIn.title}</h2>
+        <p>{copy.signingIn.body}</p>
+      </div>
+    );
   }
 
   if (!view) {

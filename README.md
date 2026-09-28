@@ -44,3 +44,14 @@ The committed migration is under `server/prisma/migrations`. API documentation i
 - Final cycle dates, templates, role assignments, privacy approval, and the unresolved decisions in PRD section 21.
 
 Local adapters never send real email or contact Employee Central. They are intentionally separated from production providers.
+
+## Azure deployment
+
+`.github/workflows/deploy-azure.yml` tests, builds and deploys to App Service `app-sdp-tool-prod-ci-01` on every push to `main` (or manually from the Actions tab). It needs the repository secret `AZURE_WEBAPP_PUBLISH_PROFILE`: the full contents of the app's `.PublishSettings` file. Never commit that file.
+
+App Service configuration (set in the portal, not in the repo):
+
+- Authentication: Microsoft Entra ID identity provider, "Require authentication", unauthenticated requests redirected to login. The server refuses to start in `appservice` mode without it, and matches the signed-in UPN to `employees.email`.
+- App settings: `NODE_ENV=production`, `AUTH_MODE=appservice`, `DATABASE_URL` (with `sslmode=require`), `SESSION_SECRET`, `CLIENT_ORIGIN` (the site URL), and `SCM_DO_BUILD_DURING_DEPLOYMENT=true` so App Service installs the Prisma engines for its own OS.
+
+Migrations run automatically on each start (`prisma migrate deploy`). Production does not seed demo data: employees, role grants and an active cycle must be loaded before users can sign in.

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=cjs --external:@prisma/client --outfile=dist/server.cjs",
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "db:generate": "prisma generate",
@@ -13,8 +14,8 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@sdp/shared": "*",
     "@prisma/client": "6.19.0",
+    "@sdp/shared": "*",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.0",
@@ -27,6 +28,7 @@
     "@types/express": "^4.17.21",
     "@types/node": "^22.0.0",
     "@types/supertest": "^6.0.3",
+    "esbuild": "^0.28.1",
     "prisma": "6.19.0",
     "supertest": "^7.1.4",
     "tsx": "^4.19.0",
