@@ -28,4 +28,9 @@ describe('server-side privacy boundaries', () => {
     const response = await request(app).get('/api/team/E0002').set('x-employee-id', 'M002').expect(200);
     expect(response.body.sharingScope).toBe('GOALS_ONLY'); expect(response.body).not.toHaveProperty('reflection');
   });
+
+  it('returns only the authenticated employee SDP history', async () => {
+    const response = await request(app).get('/api/sdp/history').set('x-employee-id', 'E0001').expect(200);
+    expect(response.body.every((plan: { employeeId: string }) => plan.employeeId === 'E0001')).toBe(true);
+  });
 });

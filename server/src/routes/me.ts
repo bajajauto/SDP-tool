@@ -6,6 +6,21 @@ import { asyncRoute, ApiError } from '../lib/errors';
 
 export const meRouter = Router();
 
+meRouter.get('/check-in-setup', asyncRoute(async (req, res) => {
+  const { employeeId } = req as unknown as AuthedRequest;
+  const employee = await prisma.employee.findUnique({ where: { employeeId }, select: { bu: true } });
+  if (!employee) throw new ApiError(404, 'NOT_FOUND', 'Employee not found');
+  const cycle = await prisma.cycle.findFirst({ where: { status: 'ACTIVE' }, orderBy: { startDate: 'desc' } });
+  if (!cycle) throw new ApiError(409, 'NO_ACTIVE_CYCLE', 'There is no active SDP cycle');
+  const assignment = await prisma.cohortAssignment.findUnique({ where: { employeeId_cycleId: { employeeId, cycleId: cycle.cycleId } } });
+  let rows = await prisma.stageDeadline.findMany({ where: { cycleId: cycle.cycleId, bu: employee.bu, ...(assignment && { cohortId: assignment.cohortId }) }, orderBy: { sortOrder: 'asc' } });
+  if (!rows.length) {
+    const baseline = await prisma.stageDeadline.findFirst({ where: { cycleId: cycle.cycleId }, orderBy: [{ bu: 'asc' }, { sortOrder: 'asc' }] });
+    if (baseline) rows = await prisma.stageDeadline.findMany({ where: { cycleId: cycle.cycleId, bu: baseline.bu }, orderBy: { sortOrder: 'asc' } });
+  }
+  res.json({ cohortId: assignment?.cohortId ?? rows[0]?.cohortId ?? null, cohortName: rows[0]?.cohortName ?? '', stages: rows.map((row) => ({ name: row.name, deadline: row.deadline.toISOString().slice(0, 10), questions: row.questions })) });
+}));
+
 meRouter.get('/', asyncRoute(async (req, res) => {
   const { employeeId, roles } = req as unknown as AuthedRequest;
   const employee = await prisma.employee.findUnique({ where: { employeeId } });

@@ -65,6 +65,10 @@ export function Sidebar({ roles, onSignOut, hideJourney = false, hideSupport = f
           <div className="snav-dot" aria-hidden="true">&#128202;</div>
           Trackers and exports
         </NavLink>
+        <NavLink to="/tdadmin/email-centre" className={({ isActive }) => `snav-item${isActive ? ' active' : ''}`}>
+          <div className="snav-dot" aria-hidden="true">&#9993;</div>
+          Email centre
+        </NavLink>
       </> : <>
       <NavLink to="/" className="snav-item" style={{ color: 'var(--muted)' }}>
         <div className="snav-dot" style={{ background: 'var(--cream-d)', color: 'var(--muted)' }}>&#8505;</div>
@@ -73,6 +77,10 @@ export function Sidebar({ roles, onSignOut, hideJourney = false, hideSupport = f
       <NavLink to="/home" className={({ isActive }) => `snav-item snav-dashboard${isActive ? ' active' : ''}`}>
         <div className="snav-dot"><img className="snav-dashboard-icon" src={dashboardIcon} alt="" aria-hidden="true" /></div>
         Dashboard
+      </NavLink>
+      <NavLink to="/my-sdps" className={({ isActive }) => `snav-item${isActive ? ' active' : ''}`}>
+        <div className="snav-dot" aria-hidden="true">&#128196;</div>
+        My SDPs
       </NavLink>
       </>}
       {!hideJourney && <>

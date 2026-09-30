@@ -126,6 +126,7 @@ model Employee {
   actionedSupportNeeds SupportNeed[]
   auditEvents          AuditLog[]        @relation("AuditActor")
   subjectAuditEvents   AuditLog[]        @relation("AuditSubject")
+  cohortAssignments    CohortAssignment[]
 
   @@index([managerEmployeeId])
   @@index([buhrEmployeeId, bu])
@@ -160,42 +161,62 @@ model Cycle {
   updatedAt      DateTime    @updatedAt @map("updated_at")
   sdps           Sdp[]
   stageDeadlines StageDeadline[]
-  cohortConfigs  CohortConfig[]
+  cohorts        Cohort[]
+  cohortAssignments CohortAssignment[]
 
   @@index([status])
   @@map("cycles")
 }
 
-model CohortConfig {
-  cohortConfigId          String   @id @default(uuid()) @map("cohort_config_id")
-  cycleId                 String   @map("cycle_id")
-  bu                      String
-  name                    String
-  dcType                  String   @map("dc_type")
-  eventStart              DateTime @map("event_start") @db.Date
-  eventEnd                DateTime @map("event_end") @db.Date
-  participantFileName     String?  @map("participant_file_name")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
-  cycle                   Cycle    @relation(fields: [cycleId], references: [cycleId], onDelete: Cascade)
+model Cohort {
+  cohortId          String             @id @default(uuid()) @map("cohort_id")
+  cycleId           String             @map("cycle_id")
+  name              String
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  cycle             Cycle              @relation(fields: [cycleId], references: [cycleId], onDelete: Cascade)
+  stageDeadlines    StageDeadline[]
+  assignments       CohortAssignment[]
+  sdps              Sdp[]
 
-  @@unique([cycleId, bu])
-  @@map("cohort_configs")
+  @@unique([cycleId, name])
+  @@index([cycleId])
+  @@map("cohorts")
+}
+
+model CohortAssignment {
+  cohortAssignmentId String   @id @default(uuid()) @map("cohort_assignment_id")
+  cohortId           String   @map("cohort_id")
+  cycleId            String   @map("cycle_id")
+  employeeId         String   @map("employee_id")
+  assignedAt         DateTime @default(now()) @map("assigned_at")
+  cohort             Cohort   @relation(fields: [cohortId], references: [cohortId], onDelete: Cascade)
+  cycle              Cycle    @relation(fields: [cycleId], references: [cycleId], onDelete: Cascade)
+  employee           Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
+
+  @@unique([employeeId, cycleId])
+  @@index([cohortId])
+  @@map("cohort_assignments")
 }
 
 model StageDeadline {
   stageDeadlineId String   @id @default(uuid()) @map("stage_deadline_id")
   cycleId        String   @map("cycle_id")
+  cohortId       String   @map("cohort_id")
   bu             String
+  cohortName     String   @map("cohort_name")
   name           String
   deadline       DateTime @db.Date
+  questions      Json     @default("[]")
   sortOrder      Int      @map("sort_order")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   cycle          Cycle    @relation(fields: [cycleId], references: [cycleId], onDelete: Cascade)
+  cohort         Cohort   @relation(fields: [cohortId], references: [cohortId], onDelete: Cascade)
 
   @@unique([cycleId, bu, sortOrder])
   @@index([cycleId, bu])
+  @@index([cohortId])
   @@map("stage_deadlines")
 }
 
@@ -203,6 +224,7 @@ model Sdp {
   sdpId                     String            @id @default(uuid()) @map("sdp_id")
   employeeId                String            @map("employee_id")
   cycleId                   String            @map("cycle_id")
+  cohortId                  String?           @map("cohort_id")
   status                    SdpStatus         @default(NOT_STARTED)
   sharingScope              SharingScope?     @map("sharing_scope")
   submittedAt               DateTime?         @map("submitted_at")
@@ -214,6 +236,7 @@ model Sdp {
   updatedAt                 DateTime          @updatedAt @map("updated_at")
   employee                  Employee          @relation(fields: [employeeId], references: [employeeId])
   cycle                     Cycle             @relation(fields: [cycleId], references: [cycleId])
+  cohort                    Cohort?            @relation(fields: [cohortId], references: [cohortId], onDelete: SetNull)
   reflection                Reflection?
   goals                     Goal[]
   checkIns                  CheckIn[]
@@ -223,6 +246,7 @@ model Sdp {
 
   @@unique([employeeId, cycleId])
   @@index([cycleId, status])
+  @@index([cohortId])
   @@map("sdps")
 }
 

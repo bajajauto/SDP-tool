@@ -18,6 +18,16 @@ const goalSchema = z.object({
   supportNeeded: z.string().max(5000).optional(), sortOrder: z.number().int().min(1).max(3).optional(), version: z.number().int().positive().optional(),
 });
 
+sdpRouter.get('/history', asyncRoute(async (req, res) => {
+  const employeeId = (req as AuthedRequest).employeeId;
+  const plans = await prisma.sdp.findMany({
+    where: { employeeId },
+    include: { ...sdpInclude, cohort: { select: { cohortId: true, name: true } } },
+    orderBy: { cycle: { startDate: 'desc' } },
+  });
+  res.json(plans.map((plan) => ({ ...serializeSdp(plan), cycle: { cycleId: plan.cycle.cycleId, label: plan.cycle.label, status: plan.cycle.status }, cohort: plan.cohort ?? null })));
+}));
+
 sdpRouter.get('/', asyncRoute(async (req, res) => res.json(serializeSdp(await ownSdp((req as AuthedRequest).employeeId, true)))));
 
 sdpRouter.patch('/reflection', asyncRoute(async (req, res) => {

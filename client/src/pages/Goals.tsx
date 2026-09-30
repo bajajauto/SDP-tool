@@ -223,6 +223,7 @@ export function Goals() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <SaveIndicator lastSavedAt={lastSavedAt} saveStatus={saveStatus} />
           {!submitted && <button className="btn btn-primary" disabled={saveStatus === 'saving'} onClick={handleSubmitClick}>{saveStatus === 'saving' ? 'Saving changes...' : 'Submit plan →'}</button>}
+          {submitted && <button type="button" className="btn btn-primary" onClick={() => navigate('/submit')}>Next &rarr;</button>}
         </div>
       </div>
 

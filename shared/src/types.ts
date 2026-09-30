@@ -63,6 +63,7 @@ export interface Sdp {
   sdpId: string;
   employeeId: string;
   cycleId: string;
+  cohortId?: string | null;
   status: SdpStatus;
   sharingScope: SharingScope | null;
   submittedAt: string | null;

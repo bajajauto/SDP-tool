@@ -1,12 +1,7 @@
-import { PanelModal } from './Modal';
 import { growthChecklist } from '../content/toolkit';
-import { useSdp } from '../state/SdpContext';
+import { PanelModal } from './Modal';
 
 export function GrowthChecklistModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { state, toggleChecklistItem, resetChecklist } = useSdp();
-  const totalItems = growthChecklist.reduce((n, s) => n + s.items.length, 0);
-  const doneCount = Object.values(state.checklist).filter(Boolean).length;
-
   return (
     <PanelModal open={open} onClose={onClose}>
       <div style={{ background: 'var(--blue-d)', color: '#fff', padding: '22px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -21,25 +16,18 @@ export function GrowthChecklistModal({ open, onClose }: { open: boolean; onClose
         </button>
       </div>
       <div style={{ padding: '6px 28px 28px', maxHeight: '74vh', overflowY: 'auto' }}>
-        <div className="gcl-banner">Use this checklist to prepare for your growth conversation. Tick items as you go.</div>
+        <div className="gcl-banner">Review these requirements before your growth conversation. Track your completion from the Growth Conversation page.</div>
         {growthChecklist.map((section) => (
           <div key={section.heading}>
             <h3 className="gcl-section-h">{section.heading}</h3>
-            {section.items.map((item) => {
-              const checked = !!state.checklist[item.id];
-              return (
-                <div key={item.id} className={`gcl-item${checked ? ' checked' : ''}`} onClick={() => toggleChecklistItem(item.id)}>
-                  <div className="gcl-box">{checked ? '✓' : ''}</div>
-                  <div className="gcl-text">{item.text}</div>
-                </div>
-              );
-            })}
+            {section.items.map((item) => (
+              <div key={item.id} className="gcl-item gcl-reference-item">
+                <span className="gcl-reference-dot" aria-hidden="true" />
+                <div className="gcl-text">{item.text}</div>
+              </div>
+            ))}
           </div>
         ))}
-        <div className="gcl-meta">
-          <div style={{ fontSize: 12.5, color: 'var(--mid)', fontWeight: 600 }}>{doneCount} of {totalItems} complete</div>
-          <button className="gcl-reset" onClick={resetChecklist}>Reset checklist</button>
-        </div>
       </div>
     </PanelModal>
   );

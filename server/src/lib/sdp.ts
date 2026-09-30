@@ -13,7 +13,8 @@ export async function ownSdp(employeeId: string, create = false) {
   const cycle = await activeCycle();
   const found = await prisma.sdp.findUnique({ where: { employeeId_cycleId: { employeeId, cycleId: cycle.cycleId } }, include: sdpInclude });
   if (found || !create) return found;
-  return prisma.sdp.create({ data: { employeeId, cycleId: cycle.cycleId, reflection: { create: {} } }, include: sdpInclude });
+  const assignment = await prisma.cohortAssignment.findUnique({ where: { employeeId_cycleId: { employeeId, cycleId: cycle.cycleId } } });
+  return prisma.sdp.create({ data: { employeeId, cycleId: cycle.cycleId, cohortId: assignment?.cohortId, reflection: { create: {} } }, include: sdpInclude });
 }
 
 export function assertDraft(status: string) {
@@ -22,7 +23,7 @@ export function assertDraft(status: string) {
 
 export function serializeSdp(sdp: any) {
   return {
-    sdpId: sdp.sdpId, employeeId: sdp.employeeId, cycleId: sdp.cycleId, status: sdp.status, sharingScope: sdp.sharingScope,
+    sdpId: sdp.sdpId, employeeId: sdp.employeeId, cycleId: sdp.cycleId, cohortId: sdp.cohortId ?? null, status: sdp.status, sharingScope: sdp.sharingScope,
     submittedAt: sdp.submittedAt?.toISOString() ?? null, conversationConfirmedAt: sdp.conversationConfirmedAt?.toISOString() ?? null,
     lastSavedAt: sdp.lastSavedAt.toISOString(), version: sdp.version,
     reflection: sdp.reflection ? { q1Words: sdp.reflection.q1Words, q1Text: sdp.reflection.q1Text, q2Text: sdp.reflection.q2Text, q3Text: sdp.reflection.q3Text, q4Text: sdp.reflection.q4Text, q5Text: sdp.reflection.q5Text, q6Text: sdp.reflection.q6Text } : null,

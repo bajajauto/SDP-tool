@@ -65,6 +65,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export interface TeamReportee { employeeId: string; fullName: string; designation: string; sharingScope: SharingScope | null; submittedAt: string | null; }
 export interface ReporteeDetail { employeeId: string; employeeName: string; sharingScope: SharingScope | null; submittedAt: string | null; goals: Goal[]; reflection?: Reflection; }
+export interface HistoricalSdp extends Sdp { cycle: { cycleId: string; label: string; status: 'DRAFT' | 'ACTIVE' | 'CLOSED' }; cohort: { cohortId: string; name: string } | null; }
 
 /**
  * POST/PATCH /sdp/goals echo the raw Prisma row (flat actionDo/actionLearn/
@@ -93,14 +94,19 @@ export interface GoalPatchBody {
   supportNeeded?: string;
 }
 
-export interface StageDeadline { id?: string; name: string; deadline: string; }
-export interface CohortConfig { name: string; dcType: 'EX_TO_LX' | 'LX_TO_LEADER'; eventStart: string; eventEnd: string; participantFileName?: string | null; }
-export interface StageDeadlineSetup { cycle: { cycleId: string; label: string }; businessUnits: string[]; cohort: CohortConfig | null; stages: StageDeadline[]; }
+export interface CheckInQuestion { id: string; prompt: string; type: 'TEXT' | 'SCALE'; placeholder?: string; }
+export interface StageDeadline { id?: string; name: string; deadline: string; questions: CheckInQuestion[]; }
+export interface StageDeadlineSetup { cycle: { cycleId: string; label: string }; businessUnits: string[]; cohortId: string | null; cohortName: string; inheritedFrom: string | null; stages: StageDeadline[]; }
+export interface CohortSummary { cohortId: string; cohortName: string; bu: string; checkInCount: number; nextDeadline: string | null; participants: number; }
+export interface EmailTemplate { templateId: string; key: string; scope: 'SYSTEM_DEFAULT' | 'TD_ADMIN' | 'BUHR'; buId: string | null; subject: string; bodyHtml: string; updatedBy: string | null; updatedAt: string; }
+export interface EmailRecipient { employeeId: string; fullName: string; email: string; bu: string; designation: string; cohortId: string | null; cohortName: string | null; }
 
 export const api = {
   me: () => request<Me>('/me'),
+  myCheckInSetup: () => request<{ cohortId: string | null; cohortName: string; stages: Array<{ name: string; deadline: string; questions: CheckInQuestion[] }> }>('/me/check-in-setup'),
   sdp: {
     get: () => request<Sdp>('/sdp'),
+    history: () => request<HistoricalSdp[]>('/sdp/history'),
     patchReflection: (body: Partial<Reflection>) => request<Sdp>('/sdp/reflection', { method: 'PATCH', body: JSON.stringify(body) }),
     createGoal: (body: GoalPatchBody) => request<RawGoal>('/sdp/goals', { method: 'POST', body: JSON.stringify(body) }),
     patchGoal: (goalId: string, body: GoalPatchBody) => request<RawGoal>(`/sdp/goals/${goalId}`, { method: 'PATCH', body: JSON.stringify(body) }),
@@ -129,9 +135,15 @@ export const api = {
       if (!result.data.length) throw new Error('Tracking pagination ended before all employees were loaded');
       page += 1;
     }
-  } },
+  }, stageDeadlines: (bu?: string) => request<StageDeadlineSetup>(`/hr/stage-deadlines${bu ? `?bu=${encodeURIComponent(bu)}` : ''}`) },
   admin: {
+    emailTemplates: () => request<EmailTemplate[]>('/admin/templates'),
+    saveEmailTemplate: (key: string, subject: string, bodyHtml: string) => request<EmailTemplate>(`/admin/templates/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify({ subject, bodyHtml }) }),
+    emailRecipients: () => request<EmailRecipient[]>('/admin/email-recipients'),
+    sendEmail: (templateKey: string, recipients: string[], subject: string, bodyHtml: string) => request<{ queued: number }>('/admin/emails/send', { method: 'POST', body: JSON.stringify({ templateKey, recipients, subject, bodyHtml }) }),
     stageDeadlines: (bu?: string) => request<StageDeadlineSetup>(`/admin/stage-deadlines${bu ? `?bu=${encodeURIComponent(bu)}` : ''}`),
-    saveStageDeadlines: (bu: string, cohort: CohortConfig, stages: StageDeadline[], applyToAll = false) => request<{ appliedBusinessUnits: number }>('/admin/stage-deadlines', { method: 'PUT', body: JSON.stringify({ bu, cohort, stages: stages.map(({ name, deadline }) => ({ name, deadline })), applyToAll }) }),
+    cohorts: () => request<{ cycle: { cycleId: string; label: string }; cohorts: CohortSummary[] }>('/admin/stage-deadlines/cohorts'),
+    saveStageDeadlines: (bu: string, cohortId: string | null, cohortName: string, stages: StageDeadline[], businessUnits?: string[], applyToAll = false) => request<{ cohortId: string; appliedBusinessUnits: number }>('/admin/stage-deadlines', { method: 'PUT', body: JSON.stringify({ bu, cohortId, cohortName, businessUnits, stages: stages.map(({ name, deadline, questions }) => ({ name, deadline, questions })), applyToAll }) }),
+    deleteCohort: (bu: string) => request<void>(`/admin/stage-deadlines?bu=${encodeURIComponent(bu)}`, { method: 'DELETE' }),
   },
 };

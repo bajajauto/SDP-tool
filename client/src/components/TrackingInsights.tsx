@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, SlidersHorizontal, BarChart3, Plus, Trash2 } from 'lucide-react';
+import { Download, SlidersHorizontal, BarChart3, Plus, Search, Trash2 } from 'lucide-react';
 import { MILESTONE_ORDER } from '@sdp/shared';
 import type { TrackingRow } from '@sdp/shared';
 import { api, ApiError } from '../lib/api';
@@ -14,8 +14,8 @@ const dimensionLabels: Record<Dimension, string> = {
 };
 const defaultDimensions: Dimension[] = ['bu', 'department', 'designation', 'managerName'];
 const sharedDimensions: Dimension[] = ['jobLevel', 'positionLevel', 'company', 'sector', 'bu', 'function', 'department', 'designation', 'baseLocation', 'circle', 'ro', 'hub', 'managerName', 'buHeadName', 'gender', 'topPotential'];
-type Filters = Record<Dimension, string>;
-const emptyFilters = Object.fromEntries(Object.keys(dimensionLabels).map((key) => [key, ''])) as Filters;
+type Filters = Record<Dimension, string[]>;
+const makeEmptyFilters = () => Object.fromEntries(Object.keys(dimensionLabels).map((key) => [key, []])) as unknown as Filters;
 const MILESTONE_LABELS = {
   SDP_SUBMITTED: 'SDP submitted', GROWTH_CONVERSATION: 'Growth conversation',
   MGR_PLAN_FEEDBACK: 'Manager plan feedback', Q1_CHECKIN: 'Q1 check-in',
@@ -33,10 +33,12 @@ export function TrackingInsights({ orgWide = false, exportOnly = false }: { orgW
   const [rows, setRows] = useState<TrackingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [draft, setDraft] = useState<Filters>(emptyFilters);
+  const [draft, setDraft] = useState<Filters>(makeEmptyFilters);
+  const [filterSearch, setFilterSearch] = useState<Partial<Record<Dimension, string>>>({});
   const [applied, setApplied] = useState<Filters | null>(null);
   const [activeDimensions, setActiveDimensions] = useState<Dimension[]>(defaultDimensions);
   const [addingFilter, setAddingFilter] = useState(false);
+  const [openFilter, setOpenFilter] = useState<Dimension | null>(null);
   const pendingFilterFocus = useRef<Dimension | null>(null);
   const [groupBy, setGroupBy] = useState<Dimension>('department');
   const [exporting, setExporting] = useState(false);
@@ -62,13 +64,13 @@ export function TrackingInsights({ orgWide = false, exportOnly = false }: { orgW
     activeDimensions.forEach((key) => {
       const options = [...new Set(candidates.filter((row) => hasValue(row, key)).map((row) => valueOf(row, key)))].sort();
       result[key] = options;
-      if (draft[key]) candidates = candidates.filter((row) => valueOf(row, key) === draft[key]);
+      if (draft[key].length) candidates = candidates.filter((row) => draft[key].includes(valueOf(row, key)));
     });
     return result;
   }, [rows, draft, activeDimensions]);
 
   const availableDimensions = useMemo(() => {
-    const candidates = rows.filter((row) => activeDimensions.every((key) => !draft[key] || valueOf(row, key) === draft[key]));
+    const candidates = rows.filter((row) => activeDimensions.every((key) => !draft[key].length || draft[key].includes(valueOf(row, key))));
     return dimensions.filter((key) => !activeDimensions.includes(key) && candidates.some((row) => hasValue(row, key)));
   }, [rows, draft, activeDimensions, dimensions]);
 
@@ -76,22 +78,44 @@ export function TrackingInsights({ orgWide = false, exportOnly = false }: { orgW
     if (!availableDimensions.length) setAddingFilter(false);
   }, [availableDimensions]);
 
-  function changeFilter(key: Dimension, value: string) {
+  useEffect(() => {
+    if (!openFilter) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || target.closest(`[data-filter-key="${openFilter}"]`)) return;
+      setOpenFilter(null);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [openFilter]);
+
+  function changeFilter(key: Dimension, value: string, checked: boolean) {
     setDraft((current) => {
-      const next = { ...current, [key]: value };
+      const next = { ...current, [key]: checked ? [...current[key], value] : current[key].filter((item) => item !== value) };
       let candidates = rows;
-      // Validate in display order so resetting one filter widens the next one's choices.
       for (const dimension of activeDimensions) {
-        if (next[dimension] && !candidates.some((row) => valueOf(row, dimension) === next[dimension])) {
-          next[dimension] = '';
-        }
-        if (next[dimension]) candidates = candidates.filter((row) => valueOf(row, dimension) === next[dimension]);
+        const valid = new Set(candidates.map((row) => valueOf(row, dimension)));
+        next[dimension] = next[dimension].filter((item) => valid.has(item));
+        if (next[dimension].length) candidates = candidates.filter((row) => next[dimension].includes(valueOf(row, dimension)));
       }
       return next;
     });
   }
 
-  const selected = useMemo(() => applied ? rows.filter((row) => dimensions.every((key) => !applied[key] || valueOf(row, key) === applied[key])) : [], [rows, applied, dimensions]);
+  function changeAllFilterOptions(key: Dimension, options: string[], checked: boolean) {
+    setDraft((current) => {
+      const next = { ...current, [key]: checked ? [...options] : [] };
+      let candidates = rows;
+      for (const dimension of activeDimensions) {
+        const valid = new Set(candidates.map((row) => valueOf(row, dimension)));
+        next[dimension] = next[dimension].filter((item) => valid.has(item));
+        if (next[dimension].length) candidates = candidates.filter((row) => next[dimension].includes(valueOf(row, dimension)));
+      }
+      return next;
+    });
+  }
+
+  const selected = useMemo(() => applied ? rows.filter((row) => dimensions.every((key) => !applied[key].length || applied[key].includes(valueOf(row, key)))) : [], [rows, applied, dimensions]);
   const submitted = selected.filter((row) => row.milestones.SDP_SUBMITTED.state === 'DONE').length;
   const pending = selected.filter((row) => MILESTONE_ORDER.some((key) => row.milestones[key].state === 'PENDING')).length;
   const milestoneSummary = useMemo(() => MILESTONE_ORDER.map((key) => {
@@ -118,7 +142,7 @@ export function TrackingInsights({ orgWide = false, exportOnly = false }: { orgW
     });
     return [...result].sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0]));
   }, [selected, groupBy]);
-  const changed = applied && dimensions.some((key) => draft[key] !== applied[key]);
+  const changed = applied && dimensions.some((key) => draft[key].length !== applied[key].length || draft[key].some((value, index) => value !== applied[key][index]));
 
   function addFilter(dimensionToAdd: Dimension) {
     if (!dimensionToAdd || !availableDimensions.includes(dimensionToAdd)) return;
@@ -128,8 +152,10 @@ export function TrackingInsights({ orgWide = false, exportOnly = false }: { orgW
   }
 
   function removeFilter(key: Dimension) {
+    if (openFilter === key) setOpenFilter(null);
     setActiveDimensions((current) => current.filter((dimension) => dimension !== key));
-    setDraft((current) => ({ ...current, [key]: '' }));
+    setDraft((current) => ({ ...current, [key]: [] }));
+    setFilterSearch((current) => ({ ...current, [key]: '' }));
   }
 
   async function exportExcel(all: boolean) {
@@ -150,7 +176,7 @@ export function TrackingInsights({ orgWide = false, exportOnly = false }: { orgW
       scope.addRow(['View', orgWide ? 'TD Admin' : 'BUHR']);
       scope.addRow(['Exported at', new Date().toISOString()]);
       scope.addRow(['Employees', all ? rows.length : selected.length]);
-      dimensions.forEach((key) => scope.addRow([dimensionLabels[key], all ? 'All authorized employees' : applied?.[key] || 'All']));
+      dimensions.forEach((key) => scope.addRow([dimensionLabels[key], all ? 'All authorized employees' : applied?.[key].join(', ') || 'All']));
       scope.columns.forEach((column) => { column.width = 30; });
       const buffer = await workbook.xlsx.writeBuffer();
       const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
@@ -180,21 +206,23 @@ export function TrackingInsights({ orgWide = false, exportOnly = false }: { orgW
       {orgWide && <button type="button" disabled={loading || !!error || !rows.length || exporting} onClick={() => void exportExcel(true)}><Download size={16} />{exporting ? 'Exporting...' : 'Export all to Excel'}</button>}
     </header>
     {loading ? <p role="status">Loading tracking data...</p> : error ? <div role="alert"><p>{error}</p><button onClick={() => setAttempt(attempt + 1)}>Retry</button></div> : <>
-      <form className="tracking-filters" onSubmit={(event) => { event.preventDefault(); setApplied({ ...draft }); }}>
+      <form className="tracking-filters" onSubmit={(event) => { event.preventDefault(); setApplied(Object.fromEntries(Object.entries(draft).map(([key, values]) => [key, [...values]])) as Filters); }}>
         <h2><SlidersHorizontal size={18} />Filter selection</h2>
         <div className="tracking-filter-grid">{activeDimensions.map((key) => {
           const label = dimensionLabels[key];
           const removable = !defaultDimensions.includes(key);
-          return <div className="tracking-filter-field" key={key}><label htmlFor={`tracking-filter-${key}`}>{label}</label><div className="tracking-filter-control"><select id={`tracking-filter-${key}`} ref={(element) => { if (element && pendingFilterFocus.current === key) { element.focus(); pendingFilterFocus.current = null; } }} aria-label={label} value={draft[key]} onChange={(event) => changeFilter(key, event.target.value)}>
-            <option value="">All {label.toLowerCase()}</option>
-            {(filterOptions[key] ?? []).map((value) => <option key={value} value={value}>{value}</option>)}
-          </select>{removable && <button className="tracking-remove-filter" type="button" onClick={() => removeFilter(key)} aria-label={`Remove ${label} filter`} title={`Remove ${label} filter`}><Trash2 size={16} /></button>}</div></div>;
+          const query = filterSearch[key] ?? '';
+          const options = filterOptions[key] ?? [];
+          const visibleOptions = options.filter((value) => value.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+          const allSelected = options.length > 0 && options.every((value) => draft[key].includes(value));
+          const someSelected = options.some((value) => draft[key].includes(value));
+          return <div className="tracking-filter-field" key={key}><label>{label}</label><div className="tracking-filter-control"><details className="tracking-multi-select" data-filter-key={key} open={openFilter === key}><summary onClick={(event) => { event.preventDefault(); setOpenFilter((current) => current === key ? null : key); }} ref={(element) => { if (element && pendingFilterFocus.current === key) { element.focus(); pendingFilterFocus.current = null; } }} aria-label={label}>{draft[key].length ? draft[key].length === 1 ? draft[key][0] : `${draft[key].length} selected` : `All ${label.toLowerCase()}`}</summary><div className="tracking-multi-options"><div className="tracking-option-search"><Search size={14} aria-hidden="true" /><input type="search" value={query} placeholder={`Search ${label.toLowerCase()}`} aria-label={`Search ${label}`} onChange={(event) => setFilterSearch((current) => ({ ...current, [key]: event.target.value }))} /></div>{!!options.length && <button className="tracking-select-all" type="button" role="checkbox" aria-checked={someSelected && !allSelected ? 'mixed' : allSelected} onClick={() => changeAllFilterOptions(key, options, !allSelected)}><span className={`tracking-select-all-box${allSelected ? ' checked' : someSelected ? ' mixed' : ''}`} aria-hidden="true" />Select all</button>}{visibleOptions.map((value) => <label key={value}><input type="checkbox" checked={draft[key].includes(value)} onChange={(event) => changeFilter(key, value, event.target.checked)} />{value}</label>)}{!visibleOptions.length && <p className="tracking-no-options">No matches</p>}</div></details>{removable && <button className="tracking-remove-filter" type="button" onClick={() => removeFilter(key)} aria-label={`Remove ${label} filter`} title={`Remove ${label} filter`}><Trash2 size={16} /></button>}</div></div>;
         })}</div>
         {!!availableDimensions.length && <div className="tracking-add-filter">{addingFilter ? <select autoFocus aria-label="Filter category to add" value="" onChange={(event) => addFilter(event.target.value as Dimension)} onKeyDown={(event) => { if (event.key === 'Escape') setAddingFilter(false); }}><option value="">Select a category</option>{availableDimensions.map((key) => <option key={key} value={key}>{dimensionLabels[key]}</option>)}</select> : <button type="button" onClick={() => setAddingFilter(true)}><Plus size={16} />Add filter</button>}</div>}
-        <div className="tracking-filter-actions"><button className="tracking-primary" type="submit" disabled={!rows.length}>Apply filters</button><button className="tracking-clear" type="button" onClick={() => { setDraft({ ...emptyFilters }); setApplied(null); setActiveDimensions(defaultDimensions); setAddingFilter(false); }}>Clear</button>{changed && <span role="status">Unapplied filter changes</span>}</div>
+        <div className="tracking-filter-actions"><button className="tracking-primary" type="submit" disabled={!rows.length}>Apply filters</button><button className="tracking-clear" type="button" onClick={() => { setDraft(makeEmptyFilters()); setApplied(null); setActiveDimensions(defaultDimensions); setAddingFilter(false); setOpenFilter(null); setFilterSearch({}); }}>Clear</button>{changed && <span role="status">Unapplied filter changes</span>}</div>
       </form>
       {!rows.length ? <div className="tracking-empty"><h2>No employees available</h2></div> : !applied ? <div className="tracking-empty"><BarChart3 size={32} /><h2>No selection applied</h2></div> : <>
-        <div className="tracking-result-header"><div><h2>Tracking insights</h2><p>{dimensions.map((key) => applied[key] ? `${dimensionLabels[key]}: ${applied[key]}` : null).filter(Boolean).join(' / ') || 'All authorized employees'}</p></div>{orgWide && <button disabled={!selected.length || exporting} onClick={() => void exportExcel(false)}><Download size={16} />Export selection</button>}</div>
+        <div className="tracking-result-header"><div><h2>Tracking insights</h2><p>{dimensions.map((key) => applied[key].length ? `${dimensionLabels[key]}: ${applied[key].join(', ')}` : null).filter(Boolean).join(' / ') || 'All authorized employees'}</p></div>{orgWide && <button disabled={!selected.length || exporting} onClick={() => void exportExcel(false)}><Download size={16} />Export selection</button>}</div>
         {!selected.length ? <div className="tracking-empty"><h2>No employees match these filters</h2></div> : <>
           <section className="tracking-alerts">
             {bottleneck && bottleneck.waiting > 0 && <div className="tracking-alert tracking-alert-bottleneck">

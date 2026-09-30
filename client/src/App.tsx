@@ -24,6 +24,7 @@ import { HrDashboard } from './pages/HrDashboard';
 import { TdAdminDashboard } from './pages/TdAdminDashboard';
 import { HomeDashboard } from './pages/HomeDashboard';
 import { RouteStub } from './pages/RouteStub';
+import { MySdps } from './pages/MySdps';
 import { SdpProvider } from './state/SdpContext';
 import { api, clearDevEmployeeId, DEMO_IDENTITIES, setDevEmployeeId } from './lib/api';
 
@@ -68,7 +69,7 @@ export default function App() {
 
   useEffect(() => {
     if (view === 'buhr' && !location.pathname.startsWith('/buhr/')) navigate('/buhr/tracking', { replace: true });
-    if (view === 'tdadmin' && !location.pathname.startsWith('/tdadmin/')) navigate('/tdadmin/tracking', { replace: true });
+    if (view === 'tdadmin' && !location.pathname.startsWith('/tdadmin/')) navigate('/tdadmin/cohort-setup', { replace: true });
   }, [location.pathname, navigate, view]);
 
   if (accessDenied) {
@@ -89,7 +90,7 @@ export default function App() {
     if (role === 'employee') navigate('/');
     if (role === 'manager') navigate('/home');
     if (role === 'buhr') navigate('/buhr/tracking');
-    if (role === 'tdadmin') navigate('/tdadmin/tracking');
+    if (role === 'tdadmin') navigate('/tdadmin/cohort-setup');
   }
 
   function handleSwitchView(role: ViewRole) {
@@ -106,7 +107,7 @@ export default function App() {
     }
     setAccessDenied(false);
     setView(role);
-    navigate(role === 'employee' ? '/' : role === 'manager' ? '/home' : role === 'buhr' ? '/buhr/tracking' : '/tdadmin/tracking');
+    navigate(role === 'employee' ? '/' : role === 'manager' ? '/home' : role === 'buhr' ? '/buhr/tracking' : '/tdadmin/cohort-setup');
   }
 
   function handleSignOut() {
@@ -142,7 +143,7 @@ export default function App() {
           {view === 'buhr' ? (
             <main className="app-main" style={{ flex: 1, minWidth: 0 }}><HrDashboard exportsOnly={location.pathname === '/buhr/exports'} /></main>
           ) : view === 'tdadmin' ? (
-            <main className="app-main" style={{ flex: 1, minWidth: 0 }}><TdAdminDashboard section={location.pathname === '/tdadmin/cohort-setup' ? 'cohort' : 'tracking'} /></main>
+            <main className="app-main" style={{ flex: 1, minWidth: 0 }}><TdAdminDashboard section={location.pathname === '/tdadmin/cohort-setup' ? 'cohort' : location.pathname === '/tdadmin/email-centre' ? 'email' : 'tracking'} /></main>
           ) : (
             <>
             <main className="app-main" style={{ flex: 1, minWidth: 0 }}>
@@ -160,6 +161,7 @@ export default function App() {
                 <Route path="/toolkit" element={<Toolkit />} />
                 <Route path="/journal" element={<Journal />} />
                 <Route path="/letter" element={<Letter />} />
+                <Route path="/my-sdps" element={<MySdps />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/team/:employeeId" element={<ReporteeDetail />} />
                 <Route path="*" element={<RouteStub title="Not found" />} />
