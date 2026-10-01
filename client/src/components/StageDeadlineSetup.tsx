@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, Pencil, Plus, Search, Trash2, Users, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, Pencil, Plus, Search, Trash2, Users, X } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import type { CheckInQuestion, CohortSummary, StageDeadline, StageDeadlineSetup } from '../lib/api';
 
@@ -31,9 +31,10 @@ export function StageDeadlineSetup() {
   const [stages, setStages] = useState<StageDeadline[]>(starterStages);
   const [targetBusinessUnits, setTargetBusinessUnits] = useState<string[]>([]);
   const [cohorts, setCohorts] = useState<CohortSummary[]>([]);
-  const [deadlineBu, setDeadlineBu] = useState('');
   const [deadlineBuQuery, setDeadlineBuQuery] = useState('');
-  const [deadlineView, setDeadlineView] = useState<StageDeadlineSetup | null>(null);
+  const [deadlineCohortFilter, setDeadlineCohortFilter] = useState('');
+  const [deadlineViews, setDeadlineViews] = useState<{ bu: string; setup: StageDeadlineSetup }[]>([]);
+  const [expandedDeadlineBu, setExpandedDeadlineBu] = useState<string | null>(null);
   const [deadlineLoading, setDeadlineLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
@@ -59,16 +60,25 @@ export function StageDeadlineSetup() {
   async function loadCohorts() {
     const result = await api.admin.cohorts();
     setCohorts(result.cohorts); setCycleLabel(result.cycle.label);
+    return result;
   }
-  async function loadDeadlineView(selectedBu: string) {
-    if (!selectedBu) return;
+  async function loadDeadlineViews(items: string[]) {
     setDeadlineLoading(true);
-    try { setDeadlineView(await api.admin.stageDeadlines(selectedBu)); setDeadlineBu(selectedBu); setDeadlineBuQuery(selectedBu); }
+    try {
+      const views = await Promise.all(items.map(async (itemBu) => ({ bu: itemBu, setup: await api.admin.stageDeadlines(itemBu) })));
+      setDeadlineViews(views);
+    }
     catch (err) { setError(err instanceof ApiError ? err.message : 'Deadlines could not be loaded.'); }
     finally { setDeadlineLoading(false); }
   }
+  async function refreshCohortsAndDeadlineViews() {
+    await loadCohorts();
+    await loadDeadlineViews(businessUnits);
+  }
   useEffect(() => {
-    void Promise.all([load(), loadCohorts()]);
+    void Promise.all([load(), loadCohorts()]).then(([setup]) => {
+      if (setup) void loadDeadlineViews(setup.businessUnits);
+    });
   }, []);
 
   function update(index: number, patch: Partial<StageDeadline>) {
@@ -81,7 +91,7 @@ export function StageDeadlineSetup() {
     setSaving(true); setError('');
     try {
       const result = await api.admin.saveStageDeadlines(bu, cohortId, cohortName, stages, editing ? targetBusinessUnits : undefined, applyToAll);
-      await Promise.all([load(bu), loadCohorts(), loadDeadlineView(deadlineBu || bu)]); setOpen(false);
+      await Promise.all([load(bu), refreshCohortsAndDeadlineViews()]); setOpen(false);
       setMessage(applyToAll ? `Setup applied to all ${result.appliedBusinessUnits} business units.` : `Cohort setup saved for ${bu}.`);
     } catch (err) { setError(err instanceof ApiError ? err.message : 'Cohort setup could not be saved.'); }
     finally { setSaving(false); }
@@ -92,12 +102,20 @@ export function StageDeadlineSetup() {
     setEditing(true); setTargetBusinessUnits([cohortToEdit.bu]); setOpen(true);
   }
 
+  async function editDeadlineView(itemBu: string) {
+    await load(itemBu);
+    setEditing(true); setTargetBusinessUnits([itemBu]); setOpen(true);
+  }
+
   async function deleteCohort(cohortToDelete: CohortSummary) {
     if (!window.confirm(`Delete ${cohortToDelete.cohortName} for ${cohortToDelete.bu}?`)) return;
     setError('');
-    try { await api.admin.deleteCohort(cohortToDelete.bu); await Promise.all([loadCohorts(), loadDeadlineView(deadlineBu || cohortToDelete.bu)]); setMessage(`${cohortToDelete.cohortName} deleted.`); }
+    try { await api.admin.deleteCohort(cohortToDelete.bu); await refreshCohortsAndDeadlineViews(); setMessage(`${cohortToDelete.cohortName} deleted.`); }
     catch (err) { setError(err instanceof ApiError ? err.message : 'Cohort could not be deleted.'); }
   }
+
+  const deadlineCohortOptions = [...new Set(deadlineViews.map(({ setup }) => setup.cohortName).filter(Boolean))].sort();
+  const filteredDeadlineViews = deadlineViews.filter(({ bu: itemBu, setup }) => itemBu.toLowerCase().includes(deadlineBuQuery.trim().toLowerCase()) && (!deadlineCohortFilter || setup.cohortName === deadlineCohortFilter));
 
   return <section className="cohort-page">
     <header className="cohort-page-header"><div><p>TD ADMIN / {cycleLabel || 'ACTIVE CYCLE'}</p><h1>Cohort setup</h1><span>Add check-ins and manage deadlines by business unit.</span></div><button type="button" className="tracking-primary" disabled={loading} onClick={() => { setEditing(false); setCohortId(null); setCohortName(''); setStages(starterStages.map((stage) => ({ ...stage }))); setOpen(true); }}><Plus size={16} />Set up cohort</button></header>
@@ -107,8 +125,8 @@ export function StageDeadlineSetup() {
     <section className="your-cohorts"><div className="your-cohorts-heading"><div><h2>Your cohorts</h2><p>Manage cohort check-ins, deadlines and business-unit coverage.</p></div></div>
       {!loading && !cohorts.length ? <div className="cohort-empty"><CalendarDays size={30} /><h2>No cohorts created</h2><p>Use Set up cohort to create the first one.</p></div> : <div className="cohort-table-wrap"><table><thead><tr><th>Cohort</th><th>Check-ins</th><th>Participants</th><th>Next deadline</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{cohorts.map((item) => <tr key={item.bu}><td><strong>{item.cohortName}</strong></td><td>{item.checkInCount}</td><td>{item.participants}</td><td>{item.nextDeadline ?? '—'}</td><td><span className="cohort-status">Active</span></td><td className="cohort-row-actions"><button type="button" aria-label={`Edit ${item.cohortName}`} title="Edit" onClick={() => void editCohort(item)}><Pencil size={15} /></button><button type="button" aria-label={`Delete ${item.cohortName}`} title="Delete" onClick={() => void deleteCohort(item)}><Trash2 size={15} /></button></td></tr>)}</tbody></table></div>}
     </section>
-    <section className="bu-deadlines"><div className="bu-deadlines-heading"><div><h2>BU deadlines</h2><p>View every check-in deadline configured for a business unit.</p></div><label>Business unit<span className="bu-search-control"><Search size={15} aria-hidden="true" /><input type="search" list="deadline-business-units" value={deadlineBuQuery} placeholder="Search business units" aria-label="Search or select a business unit" onChange={(event) => { const value = event.target.value; setDeadlineBuQuery(value); if (businessUnits.includes(value) && value !== deadlineBu) void loadDeadlineView(value); }} onBlur={() => { if (!businessUnits.includes(deadlineBuQuery)) setDeadlineBuQuery(deadlineBu); }} /><datalist id="deadline-business-units">{businessUnits.map((item) => <option key={item} value={item} />)}</datalist></span></label></div>
-      {deadlineLoading ? <p className="bu-deadlines-loading" role="status">Loading deadlines...</p> : !deadlineBu ? <div className="bu-deadlines-empty"><p>Search for or select a business unit to view its deadlines.</p></div> : !deadlineView?.stages.length ? <div className="bu-deadlines-empty"><p>No deadlines have been configured for {deadlineBu}.</p></div> : <div className="bu-deadlines-table"><div className="bu-deadlines-context"><div><strong>{deadlineView.cohortName}</strong>{deadlineView.inheritedFrom && <small>Shared all-BU deadlines</small>}</div><span>{deadlineBu}</span></div><table><thead><tr><th>Check-in or stage</th><th>Deadline</th></tr></thead><tbody>{deadlineView.stages.map((stage) => <tr key={stage.id ?? stage.name}><td>{stage.name}</td><td>{stage.deadline}</td></tr>)}</tbody></table></div>}
+    <section className="bu-deadlines"><div className="bu-deadlines-heading"><div><h2>BU deadlines</h2><p>View every check-in deadline configured across business units.</p></div><div className="bu-deadline-filters"><label>Business unit<span className="bu-search-control"><Search size={15} aria-hidden="true" /><input type="search" value={deadlineBuQuery} placeholder="Search business units" aria-label="Search business units" onChange={(event) => setDeadlineBuQuery(event.target.value)} /></span></label><label>Cohort<select value={deadlineCohortFilter} aria-label="Filter by cohort" onChange={(event) => setDeadlineCohortFilter(event.target.value)}><option value="">All cohorts</option>{deadlineCohortOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label></div></div>
+      {deadlineLoading ? <p className="bu-deadlines-loading" role="status">Loading deadlines...</p> : !deadlineViews.length ? <div className="bu-deadlines-empty"><p>No deadlines have been configured yet.</p></div> : !filteredDeadlineViews.length ? <div className="bu-deadlines-empty"><p>No business units match the selected filters.</p></div> : <div className="bu-deadline-list">{filteredDeadlineViews.map(({ bu: itemBu, setup }) => { const expanded = expandedDeadlineBu === itemBu; const nextDeadline = setup.stages.map((stage) => stage.deadline).filter(Boolean).sort()[0] ?? '—'; return <article className={`bu-deadline-card${expanded ? ' expanded' : ''}`} key={itemBu}><div className="bu-deadline-card-header"><button type="button" className="bu-deadline-toggle" aria-expanded={expanded} aria-controls={`deadlines-${itemBu.replace(/[^a-z0-9]/gi, '-')}`} onClick={() => setExpandedDeadlineBu(expanded ? null : itemBu)}><span><small>Business unit</small><strong>{itemBu}</strong></span><span className="bu-deadline-card-detail"><small>Cohort</small><strong>{setup.cohortName || '—'}</strong></span><span className="bu-deadline-card-detail"><small>Next deadline</small><strong>{nextDeadline}</strong></span><span className="bu-deadline-card-detail"><small>Status</small><strong className="cohort-status">Active</strong></span><span className="bu-deadline-summary">{setup.stages.length} check-in{setup.stages.length === 1 ? '' : 's'}<ChevronDown size={17} aria-hidden="true" /></span></button><button type="button" className="bu-deadline-edit" onClick={() => void editDeadlineView(itemBu)}><Pencil size={14} aria-hidden="true" />Edit</button></div>{expanded && <div className="bu-deadlines-table" id={`deadlines-${itemBu.replace(/[^a-z0-9]/gi, '-')}`}><div className="bu-deadlines-context"><div><strong>{setup.cohortName}</strong>{setup.inheritedFrom && <small>Shared all-BU deadlines</small>}</div></div><table><thead><tr><th>Check-in or stage</th><th>Deadline</th></tr></thead><tbody>{setup.stages.map((stage) => <tr key={stage.id ?? stage.name}><td>{stage.name}</td><td>{stage.deadline}</td></tr>)}</tbody></table></div>}</article>; })}</div>}
     </section>
     {open && <div className="cohort-modal-backdrop"><section className="cohort-modal" role="dialog" aria-modal="true" aria-labelledby="cohort-setup-title">
       <header><h2 id="cohort-setup-title">Cohort setup</h2><button type="button" aria-label="Close" onClick={() => { setOpen(false); setError(''); }}><X size={17} /></button></header>
